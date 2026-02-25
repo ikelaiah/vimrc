@@ -323,12 +323,11 @@ If syntax highlighting disappears:
 
 ## Final Note
 
-This is not a hobby configuration.  
-It is a disciplined workstation environment.
+Built for daily professional use.
 
-Stability over novelty.  
-Clarity over cleverness.  
+Stability over novelty.
+Clarity over cleverness.
 Focus over flash.
 
-Tools should disappear.  
+Tools should disappear.
 Work should remain.
