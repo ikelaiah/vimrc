@@ -1,0 +1,13 @@
+# Vim session file created by this config
+.vimsession
+
+# Vim swap / backup / undo artifacts
+*.swp
+*.swo
+*.swn
+*~
+*.un~
+
+# Common OS metadata files
+.DS_Store
+Thumbs.db
