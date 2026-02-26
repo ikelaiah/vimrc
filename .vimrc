@@ -1,5 +1,5 @@
 " ==========================================================
-"  IKELAIAH - PROFESSIONAL MINIMAL WORK VIM CONFIG
+"  IKELAIAH - EXT.PLUGIN-FREE MINIMAL WORK VIM CONFIG
 "  Languages: Markdown, JS, Python, PHP, SQL
 "  Philosophy: Minimal. Stable. No plugins.
 "
