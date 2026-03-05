@@ -4,7 +4,8 @@
 
 # Corporate-Safe Vim Configuration
 
-![Vim](https://img.shields.io/badge/editor-vim-brightgreen)
+![Vim 8+](https://img.shields.io/badge/Vim-8%2B-brightgreen)
+![Made with Vim](https://img.shields.io/badge/Made%20with-Vim-019733)
 ![Plugins](https://img.shields.io/badge/plugins-none-blue)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-success)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
@@ -21,34 +22,33 @@ Just **stock Vim features used effectively**.
 
 # Features
 
-- Plugin-free
-- Self-contained `.vimrc`
-- Works on stock Vim installations
-- Gruvbox → Desert theme fallback
-- Project-wide search using Vim built-ins
-- VSCode-style sidebar file explorer
-- Clean navigation shortcuts
-- Automatic whitespace cleanup
-- Safe backup and undo handling
+- [x] Plugin-free
+- [x] Self-contained `.vimrc`
+- [x] Works on stock Vim
+- [x] Truecolor support
+- [x] Gruvbox fallback to Desert
+- [x] Sidebar file explorer
+- [x] Project search using `vimgrep`
+- [x] Automatic whitespace cleanup
+- [x] Language-aware indentation
 
 Supported languages:
 
-```
-SQL
-CSS
-JavaScript
-Python
-JSON
-Markdown
-PHP
-YAML
-TOML
-INI
-Lua
-C / C++
-Java
-Object Pascal
-```
+- SQL
+- CSS
+- JavaScript
+- Python
+- JSON
+- Markdown
+- PHP
+- YAML
+- TOML
+- INI
+- Lua
+- C / C++
+- Java
+- Object Pascal
+
 
 # Screenshot
 
@@ -71,19 +71,35 @@ Editing Python with:
 
 # Installation
 
-Linux / macOS
+**Linux / macOS**
 
 ```
 ~/.vimrc
 ```
 
-Windows
+**Windows**
 
 ```
 %USERPROFILE%\_vimrc
 ```
 
 Restart Vim after installing.
+
+---
+
+## Quick Install
+
+**Linux / macOS**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ikelialah/vimrc/main/.vimrc -o ~/.vimrc
+```
+
+**Windows**
+
+```ps
+Invoke-WebRequest https://raw.githubusercontent.com/ikelialah/vimrc/main/.vimrc -OutFile $HOME\_vimrc
+```
 
 ---
 
@@ -115,10 +131,10 @@ This uses Vim’s built-in **netrw** in sidebar mode (`Lexplore`).
 
 Features:
 
-• left sidebar
-• tree view
-• quick file navigation
-• no plugins required
+- left sidebar
+- tree view
+- quick file navigation
+- no plugins required
 
 ---
 
@@ -231,7 +247,20 @@ Navigation should be faster than thinking.
 
 ---
 
+## Why This Exists
+
+Many corporate environments restrict developers from installing:
+
+- Vim plugins
+- external binaries
+- scripting runtimes
+
+This repository demonstrates that Vim can still provide a productive
+editing experience using only built-in functionality.
+
+---
 # License
 
 MIT License
+
 
