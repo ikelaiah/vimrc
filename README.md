@@ -32,6 +32,8 @@ Just **stock Vim features used effectively**.
 - [x] Whitespace visibility (tabs, trailing spaces, nbsp)
 - [x] Language-aware indentation (consistent tabstop/shiftwidth/softtabstop per filetype)
 - [x] Count-aware `j`/`k` motion (works with `5j`, `10k`, etc.)
+- [x] No swap files
+- [x] Auto-reload files changed outside Vim
 
 Supported languages:
 
@@ -84,7 +86,7 @@ Editing Python with:
 %USERPROFILE%\_vimrc
 ```
 
-On Windows, Vim also creates its runtime directories under `~/vimfiles/` (swap, backup, undo) automatically.
+On Windows, Vim also creates its runtime directories under `~/vimfiles/` (backup, undo) automatically.
 
 Restart Vim after installing.
 

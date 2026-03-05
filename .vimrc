@@ -17,9 +17,6 @@ let mapleader=" "
 " ==========================================================
 
 if has('win32')
-    if !isdirectory($HOME."/vimfiles/swap")
-        call mkdir($HOME."/vimfiles/swap", "p")
-    endif
     if !isdirectory($HOME."/vimfiles/backup")
         call mkdir($HOME."/vimfiles/backup", "p")
     endif
@@ -29,9 +26,6 @@ if has('win32')
 else
     if !isdirectory($HOME."/.vim")
         call mkdir($HOME."/.vim", "p")
-    endif
-    if !isdirectory($HOME."/.vim/swap")
-        call mkdir($HOME."/.vim/swap", "p")
     endif
     if !isdirectory($HOME."/.vim/backup")
         call mkdir($HOME."/.vim/backup", "p")
@@ -142,16 +136,17 @@ endif
 " ----------------------------------------------------------
 set backup
 set writebackup
-set swapfile
+set noswapfile
 set undofile
+
+set autoread
+autocmd FocusGained,BufEnter * checktime
 
 if has('win32')
     set backupdir=~/vimfiles/backup//
-    set directory=~/vimfiles/swap//
     set undodir=~/vimfiles/undo//
 else
     set backupdir=~/.vim/backup//
-    set directory=~/.vim/swap//
     set undodir=~/.vim/undo//
 endif
 
