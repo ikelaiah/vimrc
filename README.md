@@ -29,7 +29,7 @@ Just **stock Vim features used effectively**.
 - [x] Gruvbox fallback to Desert
 - [x] Sidebar file explorer
 - [x] Project search using `vimgrep`
-- [x] Automatic whitespace cleanup (Markdown-safe)
+- [x] Whitespace visibility (tabs, trailing spaces, nbsp)
 - [x] Language-aware indentation
 - [x] Count-aware `j`/`k` motion (works with `5j`, `10k`, etc.)
 
@@ -228,7 +228,7 @@ Toggle paste mode
 F2
 ```
 
-Trailing whitespace is automatically removed on save (skipped for Markdown, where trailing spaces are meaningful).
+Trailing whitespace is visually highlighted but not automatically removed on save.
 
 ---
 

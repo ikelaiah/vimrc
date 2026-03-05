@@ -231,15 +231,11 @@ vnoremap < <gv
 vnoremap > >gv
 
 " ----------------------------------------------------------
-" Whitespace discipline
+" Whitespace visibility
 " ----------------------------------------------------------
 set list
 set listchars=tab:»·,trail:·,nbsp:␣
 
-highlight ExtraWhitespace ctermfg=239 guifg=#504945
-match ExtraWhitespace /\s\+$/
-
-autocmd BufWritePre * if &filetype !=# 'markdown' | %s/\s\+$//e | endif
 
 " ----------------------------------------------------------
 " Paste mode
