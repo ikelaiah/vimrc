@@ -24,13 +24,14 @@ Just **stock Vim features used effectively**.
 
 - [x] Plugin-free
 - [x] Self-contained `.vimrc`
-- [x] Works on stock Vim
+- [x] Works on stock Vim (Linux, macOS, Windows)
 - [x] Truecolor support
 - [x] Gruvbox fallback to Desert
 - [x] Sidebar file explorer
 - [x] Project search using `vimgrep`
-- [x] Automatic whitespace cleanup
+- [x] Automatic whitespace cleanup (Markdown-safe)
 - [x] Language-aware indentation
+- [x] Count-aware `j`/`k` motion (works with `5j`, `10k`, etc.)
 
 Supported languages:
 
@@ -82,6 +83,8 @@ Editing Python with:
 ```
 %USERPROFILE%\_vimrc
 ```
+
+On Windows, Vim also creates its runtime directories under `~/vimfiles/` (swap, backup, undo) automatically.
 
 Restart Vim after installing.
 
@@ -225,7 +228,7 @@ Toggle paste mode
 F2
 ```
 
-Trailing whitespace is automatically removed on save.
+Trailing whitespace is automatically removed on save (skipped for Markdown, where trailing spaces are meaningful).
 
 ---
 

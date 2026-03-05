@@ -3,29 +3,43 @@
 " Pure Vim — No plugins, no external tools
 " ==========================================================
 
+set nocompatible
+filetype plugin indent on
+syntax on
+
+" ----------------------------------------------------------
+" Leader key (must be set before any mappings)
+" ----------------------------------------------------------
+let mapleader=" "
+
 " ==========================================================
 " Ensure vim directories exist
 " ==========================================================
 
-if !isdirectory($HOME."/.vim")
-    call mkdir($HOME."/.vim", "p")
+if has('win32')
+    if !isdirectory($HOME."/vimfiles/swap")
+        call mkdir($HOME."/vimfiles/swap", "p")
+    endif
+    if !isdirectory($HOME."/vimfiles/backup")
+        call mkdir($HOME."/vimfiles/backup", "p")
+    endif
+    if !isdirectory($HOME."/vimfiles/undo")
+        call mkdir($HOME."/vimfiles/undo", "p")
+    endif
+else
+    if !isdirectory($HOME."/.vim")
+        call mkdir($HOME."/.vim", "p")
+    endif
+    if !isdirectory($HOME."/.vim/swap")
+        call mkdir($HOME."/.vim/swap", "p")
+    endif
+    if !isdirectory($HOME."/.vim/backup")
+        call mkdir($HOME."/.vim/backup", "p")
+    endif
+    if !isdirectory($HOME."/.vim/undo")
+        call mkdir($HOME."/.vim/undo", "p")
+    endif
 endif
-
-if !isdirectory($HOME."/.vim/swap")
-    call mkdir($HOME."/.vim/swap", "p")
-endif
-
-if !isdirectory($HOME."/.vim/backup")
-    call mkdir($HOME."/.vim/backup", "p")
-endif
-
-if !isdirectory($HOME."/.vim/undo")
-    call mkdir($HOME."/.vim/undo", "p")
-endif
-
-set nocompatible
-filetype plugin indent on
-syntax on
 
 " ----------------------------------------------------------
 " Truecolor if supported
@@ -55,7 +69,7 @@ set shortmess+=I
 set number
 set relativenumber
 set cursorline
-set signcolumn=yes
+set signcolumn=auto
 
 set ruler
 set showcmd
@@ -122,7 +136,7 @@ set wildignore+=*/.git/*
 " Clipboard
 " ----------------------------------------------------------
 if has("clipboard")
-    set clipboard=unnamedplus
+    set clipboard=unnamed,unnamedplus
 endif
 
 " ----------------------------------------------------------
@@ -133,14 +147,15 @@ set writebackup
 set swapfile
 set undofile
 
-set backupdir=~/.vim/backup//
-set directory=~/.vim/swap//
-set undodir=~/.vim/undo//
-
-" ----------------------------------------------------------
-" Leader key
-" ----------------------------------------------------------
-let mapleader=" "
+if has('win32')
+    set backupdir=~/vimfiles/backup//
+    set directory=~/vimfiles/swap//
+    set undodir=~/vimfiles/undo//
+else
+    set backupdir=~/.vim/backup//
+    set directory=~/.vim/swap//
+    set undodir=~/.vim/undo//
+endif
 
 " ----------------------------------------------------------
 " Save / quit
@@ -191,7 +206,7 @@ nnoremap <leader>e :Lexplore<CR>
 " ----------------------------------------------------------
 " File search
 " ----------------------------------------------------------
-nnoremap <leader>f :find
+nnoremap <leader>f :find<Space>
 
 " ----------------------------------------------------------
 " Project search (pure Vim)
@@ -207,8 +222,8 @@ nnoremap <leader>cc :cclose<CR>
 " ----------------------------------------------------------
 " Movement improvements
 " ----------------------------------------------------------
-nnoremap j gj
-nnoremap k gk
+nnoremap <expr> j v:count ? 'j' : 'gj'
+nnoremap <expr> k v:count ? 'k' : 'gk'
 
 nnoremap Y y$
 
@@ -224,7 +239,7 @@ set listchars=tab:»·,trail:·,nbsp:␣
 highlight ExtraWhitespace ctermfg=239 guifg=#504945
 match ExtraWhitespace /\s\+$/
 
-autocmd BufWritePre * %s/\s\+$//e
+autocmd BufWritePre * if &filetype !=# 'markdown' | %s/\s\+$//e | endif
 
 " ----------------------------------------------------------
 " Paste mode
@@ -241,4 +256,3 @@ set statusline=%f\ %m%r\ [%Y]\ %=%l:%c\ (%p%%)
 " ----------------------------------------------------------
 nnoremap <leader>ev :edit $MYVIMRC<CR>
 nnoremap <leader>sv :source $MYVIMRC<CR>
-
