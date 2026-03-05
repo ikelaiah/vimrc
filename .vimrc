@@ -39,7 +39,7 @@ endif
 " ----------------------------------------------------------
 set background=dark
 silent! colorscheme gruvbox
-if g:colors_name !=# "gruvbox"
+if !exists('g:colors_name') || g:colors_name !=# "gruvbox"
     colorscheme desert
 endif
 
