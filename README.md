@@ -92,13 +92,13 @@ Restart Vim after installing.
 **Linux / macOS**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ikelialah/vimrc/main/.vimrc -o ~/.vimrc
+curl -fsSL https://raw.githubusercontent.com/ikelaiah/vimrc/main/.vimrc -o ~/.vimrc
 ```
 
 **Windows**
 
 ```ps
-Invoke-WebRequest https://raw.githubusercontent.com/ikelialah/vimrc/main/.vimrc -OutFile $HOME\_vimrc
+Invoke-WebRequest https://raw.githubusercontent.com/ikelaiah/vimrc/main/.vimrc -OutFile $HOME\_vimrc
 ```
 
 ---
