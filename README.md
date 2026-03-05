@@ -21,15 +21,15 @@ Just **stock Vim features used effectively**.
 
 # Features
 
-• Plugin-free
-• Self-contained `.vimrc`
-• Works on stock Vim installations
-• Gruvbox → Desert theme fallback
-• Project-wide search using Vim built-ins
-• VSCode-style sidebar file explorer
-• Clean navigation shortcuts
-• Automatic whitespace cleanup
-• Safe backup and undo handling
+- Plugin-free
+- Self-contained `.vimrc`
+- Works on stock Vim installations
+- Gruvbox → Desert theme fallback
+- Project-wide search using Vim built-ins
+- VSCode-style sidebar file explorer
+- Clean navigation shortcuts
+- Automatic whitespace cleanup
+- Safe backup and undo handling
 
 Supported languages:
 
@@ -234,3 +234,4 @@ Navigation should be faster than thinking.
 # License
 
 MIT License
+
