@@ -1,0 +1,27 @@
+<svg width="1200" height="260" viewBox="0 0 1200 260" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="260" fill="#1d2021"/>
+  
+  <text x="600" y="110"
+        font-family="JetBrains Mono, Consolas, monospace"
+        font-size="46"
+        fill="#fabd2f"
+        text-anchor="middle">
+        Corporate-Safe Vim
+  </text>
+
+  <text x="600" y="160"
+        font-family="JetBrains Mono, Consolas, monospace"
+        font-size="22"
+        fill="#ebdbb2"
+        text-anchor="middle">
+        Plugin-Free • Self-Contained • Enterprise Friendly
+  </text>
+
+  <text x="600" y="205"
+        font-family="JetBrains Mono, Consolas, monospace"
+        font-size="18"
+        fill="#b8bb26"
+        text-anchor="middle">
+        SQL • Python • JS • YAML • PHP • Markdown
+  </text>
+</svg>
