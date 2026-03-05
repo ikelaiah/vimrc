@@ -201,6 +201,9 @@ let g:netrw_keepdir = 0
 " Sidebar explorer toggle
 nnoremap <leader>e :Lexplore<CR>
 
+" Fix C-l conflict with netrw's refresh binding
+autocmd FileType netrw noremap <buffer> <C-l> <C-w>l
+
 " ----------------------------------------------------------
 " File search
 " ----------------------------------------------------------
