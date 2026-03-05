@@ -102,7 +102,6 @@ nnoremap <leader>/ :nohlsearch<CR>
 " Performance
 " ----------------------------------------------------------
 set lazyredraw
-set ttyfast
 set updatetime=300
 set synmaxcol=240
 
@@ -115,9 +114,8 @@ set shiftwidth=4
 set softtabstop=4
 
 set autoindent
-set smartindent
 
-autocmd FileType javascript,css,json,yaml,toml,lua setlocal tabstop=2 shiftwidth=2
+autocmd FileType javascript,css,json,yaml,toml,lua setlocal tabstop=2 shiftwidth=2 softtabstop=2
 autocmd FileType markdown setlocal wrap linebreak
 autocmd FileType make setlocal noexpandtab
 
@@ -235,7 +233,6 @@ vnoremap > >gv
 " ----------------------------------------------------------
 set list
 set listchars=tab:»·,trail:·,nbsp:␣
-
 
 " ----------------------------------------------------------
 " Paste mode

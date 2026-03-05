@@ -30,7 +30,7 @@ Just **stock Vim features used effectively**.
 - [x] Sidebar file explorer
 - [x] Project search using `vimgrep`
 - [x] Whitespace visibility (tabs, trailing spaces, nbsp)
-- [x] Language-aware indentation
+- [x] Language-aware indentation (consistent tabstop/shiftwidth/softtabstop per filetype)
 - [x] Count-aware `j`/`k` motion (works with `5j`, `10k`, etc.)
 
 Supported languages:
