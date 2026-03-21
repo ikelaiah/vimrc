@@ -34,7 +34,7 @@ Just **stock Vim features used effectively**.
 - [x] Smarter built-in completion and command-line matching
 - [x] No swap files
 - [x] Auto-reload files changed outside Vim
-- [x] Auto-save and restore sessions (terminal buffers excluded)
+- [x] Per-project auto-save and restore sessions (terminal buffers excluded)
 
 Supported languages:
 
@@ -83,7 +83,7 @@ Editing Python with:
 %USERPROFILE%\_vimrc
 ```
 
-On Windows, Vim also creates its runtime directories under `~/vimfiles/` (backup, undo, sessions) automatically.
+On Windows, Vim also creates its runtime directories under `~/vimfiles/` (backup, undo, per-project sessions) automatically.
 
 Restart Vim after installing.
 
@@ -136,6 +136,7 @@ Features:
 - left sidebar
 - tree view
 - quick file navigation
+- opens at the original project directory from `vim .`
 - no plugins required
 
 ---
@@ -218,7 +219,7 @@ Space ← → ↑ ↓
 
 ## Sessions
 
-Sessions save and restore your window layout, open files, and folds. Terminal buffers and missing files are automatically excluded on restore.
+Sessions save and restore your window layout, open files, and folds on a per-project basis. Each working directory gets its own session file, so `vim .` inside different folders restores different layouts.
 
 | Action          | Shortcut   |
 | --------------- | ---------- |
@@ -226,7 +227,9 @@ Sessions save and restore your window layout, open files, and folds. Terminal bu
 | Restore session | `Space sr` |
 | Delete session  | `Space sd` |
 
-**Auto-save / auto-restore:** When Vim is opened with no file arguments, the last session is automatically restored on startup and saved on exit.
+**Auto-save / auto-restore:** When Vim is opened with no file arguments, or with a single directory argument such as `vim .`, Vim restores the session for that directory on startup and saves back to that same directory-specific session on exit.
+
+**Terminal safety:** Auto-save wipes terminal buffers before the session file is written, so a broken `:terminal` can never poison the saved project session. Manual `Space ss` refuses to save while terminal buffers are open; quit Vim normally instead and the auto-save path will strip them safely.
 
 **Safe restore:** The following buffer types are automatically discarded on restore:
 

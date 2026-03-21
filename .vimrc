@@ -219,10 +219,10 @@ let g:netrw_browse_split=0
 let g:netrw_altv=1
 let g:netrw_winsize=25
 let g:netrw_sort_by = 'name'
-let g:netrw_keepdir = 0
+let g:netrw_keepdir = 1
 
 " Sidebar explorer toggle
-nnoremap <leader>e :Lexplore<CR>
+nnoremap <leader>e :call <SID>OpenProjectExplorer()<CR>
 
 " Fix C-l conflict with netrw's refresh binding
 augroup NetrwFix
@@ -278,8 +278,7 @@ set statusline=%f\ %m%r\ [%Y]\ %=%l:%c\ (%p%%)
 " ----------------------------------------------------------
 " Sessions
 " ----------------------------------------------------------
-" Skip terminals (avoids broken terminal buffer on restore),
-" skip blank/missing buffers, keep window layout + tabs + folds.
+" Keep window layout + tabs + folds in per-project sessions.
 set sessionoptions=curdir,folds,tabpages,winsize,winpos
 
 if has('win32')
@@ -288,11 +287,12 @@ else
     let s:session_dir = $HOME . '/.vim/sessions'
 endif
 
-let s:session_file = s:session_dir . '/default.vim'
+let s:auto_session_root = ''
+let s:startup_root = ''
 
-" Auto-restore session when Vim starts with no file args, or with only a directory arg
-" Auto-save session on exit in those same cases
-function! s:ShouldUseSession() abort
+" Auto-restore session when Vim starts with no file args, or with only a directory arg.
+" Auto-save session on exit in those same cases.
+function! s:ShouldAutoSession() abort
     if argc() == 0
         return 1
     endif
@@ -303,21 +303,97 @@ function! s:ShouldUseSession() abort
     return 0
 endfunction
 
-augroup Session
-    autocmd!
-    autocmd VimEnter * nested
-        \ if s:ShouldUseSession() && filereadable(s:session_file) |
-        \     silent! execute 'source ' . fnameescape(s:session_file) |
-        \     call s:CleanMissingBuffers() |
-        \ endif |
-        \ if argc() == 1 && isdirectory(argv(0)) |
-        \     execute 'cd ' . fnameescape(fnamemodify(argv(0), ':p')) |
-        \ endif
-    autocmd VimLeave *
-        \ if s:ShouldUseSession() |
-        \     silent! execute 'mksession! ' . fnameescape(s:session_file) |
-        \ endif
-augroup END
+function! s:NormalizePath(path) abort
+    let l:path = fnamemodify(a:path, ':p')
+    if exists('*resolve')
+        let l:path = resolve(l:path)
+    endif
+    let l:path = simplify(l:path)
+    let l:path = substitute(l:path, '\\', '/', 'g')
+    if l:path !~# '^\a:/$' && l:path !=# '/'
+        let l:path = substitute(l:path, '/\+$', '', '')
+    endif
+    if has('win32') || has('win64')
+        let l:path = tolower(l:path)
+    endif
+    return l:path
+endfunction
+
+function! s:SessionRootFromStartup() abort
+    if argc() == 1 && isdirectory(argv(0))
+        return s:NormalizePath(argv(0))
+    endif
+    return s:NormalizePath(getcwd())
+endfunction
+
+function! s:ProjectRoot() abort
+    if !empty(s:auto_session_root)
+        return s:auto_session_root
+    endif
+    if empty(s:startup_root)
+        let s:startup_root = s:SessionRootFromStartup()
+    endif
+    return s:startup_root
+endfunction
+
+function! s:OpenProjectExplorer() abort
+    execute 'Lexplore ' . fnameescape(s:ProjectRoot())
+endfunction
+
+function! s:CurrentSessionRoot() abort
+    if !empty(s:auto_session_root)
+        return s:auto_session_root
+    endif
+    return s:NormalizePath(getcwd())
+endfunction
+
+function! s:SessionKey(path) abort
+    let l:tail = fnamemodify(a:path, ':t')
+    if empty(l:tail)
+        if a:path =~# '^\a:/$'
+            let l:tail = substitute(a:path, '[:/\\]', '', 'g')
+        else
+            let l:tail = 'root'
+        endif
+    endif
+    let l:tail = substitute(l:tail, '[^A-Za-z0-9._-]', '_', 'g')
+    if exists('*sha256')
+        let l:key = sha256(a:path)[0:15]
+    else
+        let l:key = substitute(a:path, '[^A-Za-z0-9._-]', '_', 'g')
+    endif
+    return l:tail . '__' . l:key
+endfunction
+
+function! s:CurrentSessionFile() abort
+    return s:session_dir . '/' . s:SessionKey(s:CurrentSessionRoot()) . '.vim'
+endfunction
+
+function! s:IsTerminalBuffer(bufnr) abort
+    if !bufexists(a:bufnr)
+        return 0
+    endif
+    let l:name = bufname(a:bufnr)
+    let l:bt = getbufvar(a:bufnr, '&buftype')
+    return l:bt ==# 'terminal' || l:name =~# '^term://'
+endfunction
+
+function! s:HasTerminalBuffers() abort
+    for l:buf in range(1, bufnr('$'))
+        if s:IsTerminalBuffer(l:buf)
+            return 1
+        endif
+    endfor
+    return 0
+endfunction
+
+function! s:DropTerminalBuffers() abort
+    for l:buf in range(1, bufnr('$'))
+        if s:IsTerminalBuffer(l:buf)
+            silent! execute 'bwipeout! ' . l:buf
+        endif
+    endfor
+endfunction
 
 function! s:CleanMissingBuffers() abort
     for l:buf in range(1, bufnr('$'))
@@ -328,8 +404,8 @@ function! s:CleanMissingBuffers() abort
         let l:ft   = getbufvar(l:buf, '&filetype')
         let l:bt   = getbufvar(l:buf, '&buftype')
 
-        " Wipe terminal buffers (term://)
-        if l:name =~# '^term://'
+        " Wipe terminal buffers
+        if s:IsTerminalBuffer(l:buf)
             silent! execute 'bwipeout! ' . l:buf | continue
         endif
         " Wipe netrw (restores broken w:netrw_treetop state)
@@ -355,9 +431,83 @@ function! s:CleanMissingBuffers() abort
     endfor
 endfunction
 
-nnoremap <leader>ss :execute 'mksession! ' . fnameescape(s:session_file) \| echo 'Session saved'<CR>
-nnoremap <leader>sr :call s:CleanMissingBuffers() \| execute 'source ' . fnameescape(s:session_file) \| echo 'Session restored'<CR>
-nnoremap <leader>sd :call delete(s:session_file) \| echo 'Session deleted'<CR>
+function! s:SaveCurrentSession(force_for_exit) abort
+    let l:session_file = s:CurrentSessionFile()
+    if a:force_for_exit
+        call s:DropTerminalBuffers()
+    elseif s:HasTerminalBuffers()
+        echohl WarningMsg
+        echom 'Session not saved: close terminal buffers first, or quit Vim and auto-save will skip them.'
+        echohl None
+        return
+    endif
+    silent! execute 'mksession! ' . fnameescape(l:session_file)
+    let v:this_session = l:session_file
+    if !a:force_for_exit
+        echom 'Session saved: ' . fnamemodify(s:CurrentSessionRoot(), ':~')
+    endif
+endfunction
+
+function! s:RestoreCurrentSession(show_messages) abort
+    let l:session_file = s:CurrentSessionFile()
+    call s:DropTerminalBuffers()
+    if !filereadable(l:session_file)
+        if a:show_messages
+            echom 'No session saved for: ' . fnamemodify(s:CurrentSessionRoot(), ':~')
+        endif
+        return
+    endif
+    silent! execute 'source ' . fnameescape(l:session_file)
+    call s:CleanMissingBuffers()
+    let v:this_session = l:session_file
+    if a:show_messages
+        echom 'Session restored: ' . fnamemodify(s:CurrentSessionRoot(), ':~')
+    endif
+endfunction
+
+function! s:DeleteCurrentSession() abort
+    let l:session_file = s:CurrentSessionFile()
+    if delete(l:session_file) == 0
+        echom 'Session deleted: ' . fnamemodify(s:CurrentSessionRoot(), ':~')
+        return
+    endif
+    echom 'No session file to delete for: ' . fnamemodify(s:CurrentSessionRoot(), ':~')
+endfunction
+
+function! s:MaybeRestoreAutoSession() abort
+    if !s:ShouldAutoSession()
+        return
+    endif
+    let s:auto_session_root = s:SessionRootFromStartup()
+    let s:startup_root = s:auto_session_root
+    execute 'cd ' . fnameescape(s:auto_session_root)
+    call s:RestoreCurrentSession(0)
+endfunction
+
+function! s:MaybeSaveAutoSession() abort
+    if !s:ShouldAutoSession()
+        return
+    endif
+    if empty(s:auto_session_root)
+        let s:auto_session_root = s:SessionRootFromStartup()
+    endif
+    call s:SaveCurrentSession(1)
+endfunction
+
+augroup ProjectRoot
+    autocmd!
+    autocmd VimEnter * if empty(s:startup_root) | let s:startup_root = s:SessionRootFromStartup() | endif
+augroup END
+
+augroup Session
+    autocmd!
+    autocmd VimEnter * nested call s:MaybeRestoreAutoSession()
+    autocmd VimLeavePre * call s:MaybeSaveAutoSession()
+augroup END
+
+nnoremap <leader>ss :call <SID>SaveCurrentSession(0)<CR>
+nnoremap <leader>sr :call <SID>RestoreCurrentSession(1)<CR>
+nnoremap <leader>sd :call <SID>DeleteCurrentSession()<CR>
 
 " ----------------------------------------------------------
 " Vimrc shortcuts
