@@ -10,11 +10,21 @@
 ![Dependencies](https://img.shields.io/badge/dependencies-none-success)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
+**Plugin-Free Vim for Locked-Down Workstations**
+
 A **pure Vim configuration designed for restricted corporate environments**.
 
-No plugins. No external tools. No Python / Node / ripgrep / ctags calls.
+No additional Vim plugins. No package managers. No Python / Node / ripgrep / ctags calls. No external binaries required.
 
 Just **stock Vim features used effectively**.
+
+---
+
+## What Corporate-Safe Means Here
+
+In this repository, **corporate-safe** means the configuration is designed to run on stock Vim without extra Vim plugins or command-line dependencies that usually need approval on locked-down workstations.
+
+It does **not** claim formal security certification, company policy approval, or a zero local data footprint. Vim still creates local backup, undo, swap, and session files for recovery and workflow continuity; those files are documented below.
 
 ---
 
@@ -26,13 +36,16 @@ Just **stock Vim features used effectively**.
 - [x] Truecolor support
 - [x] Gruvbox fallback to Desert
 - [x] Sidebar file explorer
-- [x] Project search using `vimgrep`
+- [x] Prompted project search using `vimgrep`
+- [x] Search word under cursor across the project
+- [x] In-editor shortcut cheatsheet
+- [x] Recent-file and buffer pickers
 - [x] Whitespace visibility (tabs, trailing spaces, nbsp)
 - [x] Language-aware indentation (consistent tabstop/shiftwidth/softtabstop per filetype)
 - [x] Count-aware `j`/`k` motion (works with `5j`, `10k`, etc.)
 - [x] Hidden buffers for easier switching between unsaved files
 - [x] Smarter built-in completion and command-line matching
-- [x] No swap files
+- [x] Centralized swap files for crash recovery
 - [x] Auto-reload files changed outside Vim
 - [x] Per-project auto-save and restore sessions (terminal buffers excluded)
 
@@ -83,9 +96,24 @@ Editing Python with:
 %USERPROFILE%\_vimrc
 ```
 
-On Windows, Vim also creates its runtime directories under `~/vimfiles/` (backup, undo, per-project sessions) automatically.
+On Windows, Vim also creates its runtime directories under `~/vimfiles/` (backup, undo, swap, per-project sessions) automatically.
 
 Restart Vim after installing.
+
+---
+
+## Runtime Files and Recovery
+
+This configuration does not require plugins or external tools, but Vim still creates local recovery and history files. They are kept in central folders instead of being scattered through project directories.
+
+| File type | Linux / macOS | Windows | Purpose |
+| --------- | ------------- | ------- | ------- |
+| Backups   | `~/.vim/backup/` | `~/vimfiles/backup/` | Last saved file copies |
+| Undo      | `~/.vim/undo/` | `~/vimfiles/undo/` | Persistent undo history |
+| Swap      | `~/.vim/swap/` | `~/vimfiles/swap/` | Crash recovery for unsaved edits |
+| Sessions  | `~/.vim/sessions/` | `~/vimfiles/sessions/` | Per-project window and buffer layout |
+
+These files can contain source text. Treat those directories as part of your normal development footprint and clear them according to your company's retention rules.
 
 ---
 
@@ -145,13 +173,20 @@ Features:
 
 Leader key: `Space`
 
+Open the in-editor shortcut cheatsheet:
+
+```text
+Space ?
+```
+
 ---
 
 ### Files
 
 | Action           | Shortcut      |
 | ---------------- | ------------- |
-| Open file        | `Space f`     |
+| Open file        | `Space ff`    |
+| Open recent file | `Space fr`    |
 | Sidebar explorer | `Space e`     |
 | Switch last file | `Space Space` |
 
@@ -159,11 +194,15 @@ Leader key: `Space`
 
 ### Project Search
 
-| Action          | Shortcut  |
-| --------------- | --------- |
-| Search project  | `Space g` |
-| Next result     | `]q`      |
-| Previous result | `[q`      |
+| Action                   | Shortcut   |
+| ------------------------ | ---------- |
+| Search project           | `Space g`  |
+| Search project alias     | `Space fg` |
+| Search word under cursor | `Space fw` |
+| Next result              | `]q`       |
+| Previous result          | `[q`       |
+| Open results             | `Space co` |
+| Close results            | `Space cc` |
 
 Example:
 
@@ -171,12 +210,15 @@ Example:
 :vimgrep /TODO/ **/*.py
 ```
 
+`Space g` and `Space fg` prompt for the search term, run `vimgrep`, and open the quickfix list automatically.
+
 ---
 
 ### Buffers
 
 | Action          | Shortcut   |
 | --------------- | ---------- |
+| Choose buffer   | `Space fb` |
 | Next buffer     | `Space bn` |
 | Previous buffer | `Space bp` |
 | Close buffer    | `Space bd` |
@@ -219,7 +261,7 @@ Space ← → ↑ ↓
 
 ## Sessions
 
-Sessions save and restore your window layout, open files, and folds on a per-project basis. Each working directory gets its own session file, so `vim .` inside different folders restores different layouts.
+Sessions save and restore your open buffers, window layout, tabs, and folds on a per-project basis. Each working directory gets its own session file, so `vim .` inside different folders restores different layouts.
 
 | Action          | Shortcut   |
 | --------------- | ---------- |
@@ -266,6 +308,12 @@ The recommended ways to exit, from most to least cautious:
 
 ## Editing Quality of Life
 
+Open shortcut help:
+
+```text
+Space ?
+```
+
 Clear search highlight:
 
 ```text
@@ -302,9 +350,9 @@ This configuration focuses on three principles:
 
 Works everywhere Vim runs.
 
-### Compliance
+### Low Approval Footprint
 
-Safe for environments that forbid plugins or external tools.
+Usable in environments that forbid editor plugins, package managers, or external helper tools.
 
 ### Speed
 
@@ -314,9 +362,10 @@ Navigation should be faster than thinking.
 
 ## Why This Exists
 
-Many corporate environments restrict developers from installing:
+Many corporate environments restrict developers from installing or approving:
 
-- Vim plugins
+- editor plugins
+- package-managed dependencies
 - external binaries
 - scripting runtimes
 

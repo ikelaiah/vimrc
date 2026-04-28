@@ -1,6 +1,6 @@
 " ==========================================================
-" Corporate Safe Vim Configuration
-" Pure Vim — No plugins, no external tools
+" Corporate-Safe Vim Configuration
+" Plugin-free stock Vim: no additional plugins or external tools
 " ==========================================================
 
 set nocompatible
@@ -23,6 +23,9 @@ if has('win32')
     if !isdirectory($HOME."/vimfiles/undo")
         call mkdir($HOME."/vimfiles/undo", "p")
     endif
+    if !isdirectory($HOME."/vimfiles/swap")
+        call mkdir($HOME."/vimfiles/swap", "p")
+    endif
     if !isdirectory($HOME."/vimfiles/sessions")
         call mkdir($HOME."/vimfiles/sessions", "p")
     endif
@@ -35,6 +38,9 @@ else
     endif
     if !isdirectory($HOME."/.vim/undo")
         call mkdir($HOME."/.vim/undo", "p")
+    endif
+    if !isdirectory($HOME."/.vim/swap")
+        call mkdir($HOME."/.vim/swap", "p")
     endif
     if !isdirectory($HOME."/.vim/sessions")
         call mkdir($HOME."/.vim/sessions", "p")
@@ -69,7 +75,9 @@ set shortmess+=I
 set number
 set relativenumber
 set cursorline
-set signcolumn=auto
+if exists('&signcolumn')
+    set signcolumn=yes
+endif
 
 set ruler
 set showcmd
@@ -109,7 +117,7 @@ set lazyredraw
 set updatetime=300
 set synmaxcol=240
 set hidden
-set timeoutlen=500
+set timeoutlen=900
 
 " ----------------------------------------------------------
 " Indentation
@@ -124,7 +132,8 @@ set autoindent
 augroup FileTypeSettings
     autocmd!
     autocmd FileType javascript,css,json,yaml,toml,lua setlocal tabstop=2 shiftwidth=2 softtabstop=2
-    autocmd FileType markdown setlocal wrap linebreak
+    autocmd FileType markdown setlocal wrap linebreak colorcolumn=0
+    autocmd FileType help setlocal colorcolumn=0 nolist
     autocmd FileType make setlocal noexpandtab
 augroup END
 
@@ -151,7 +160,7 @@ endif
 " ----------------------------------------------------------
 set backup
 set writebackup
-set noswapfile
+set swapfile
 set undofile
 
 set autoread
@@ -162,11 +171,67 @@ augroup END
 
 if has('win32')
     set backupdir=~/vimfiles/backup//
+    set directory=~/vimfiles/swap//
     set undodir=~/vimfiles/undo//
 else
     set backupdir=~/.vim/backup//
+    set directory=~/.vim/swap//
     set undodir=~/.vim/undo//
 endif
+
+" ----------------------------------------------------------
+" Built-in help
+" ----------------------------------------------------------
+function! s:ShowHelp() abort
+    botright new
+    setlocal buftype=nofile bufhidden=wipe noswapfile nobuflisted
+    file Corporate-Safe-Vim-Help
+    call setline(1, [
+        \ 'Corporate-Safe Vim Cheatsheet (Plugin-Free)',
+        \ '',
+        \ 'Files',
+        \ '  <Space>ff    find file in project path',
+        \ '  <Space>e     toggle project explorer',
+        \ '  <Space>fr    open recent file',
+        \ '  <Space><Space> switch to alternate file',
+        \ '',
+        \ 'Search',
+        \ '  <Space>g     search project',
+        \ '  <Space>fg    search project',
+        \ '  <Space>fw    search word under cursor',
+        \ '  ]q / [q      next / previous quickfix result',
+        \ '  <Space>co    open quickfix',
+        \ '  <Space>cc    close quickfix',
+        \ '',
+        \ 'Buffers and Windows',
+        \ '  <Space>fb    choose buffer',
+        \ '  <Space>bn/bp next / previous buffer',
+        \ '  <Space>bd    close buffer',
+        \ '  Ctrl-h/j/k/l move between splits',
+        \ '  <Space>-     horizontal split',
+        \ '  <Space>\     vertical split',
+        \ '  <Space>=     equalise windows',
+        \ '',
+        \ 'Editing',
+        \ '  <Space>w     save',
+        \ '  <Space>x     save and quit',
+        \ '  <Space>q     quit with prompt',
+        \ '  <Space>/     clear search highlight',
+        \ '  <Space>l     toggle whitespace markers',
+        \ '  <Space>z     toggle wrap',
+        \ '',
+        \ 'Sessions',
+        \ '  <Space>ss    save session',
+        \ '  <Space>sr    restore session',
+        \ '  <Space>sd    delete session',
+        \ '',
+        \ 'Press q to close this help.'
+        \ ])
+    nnoremap <buffer> q :close<CR>
+    setlocal nomodifiable nomodified
+endfunction
+
+nnoremap <leader>? :call <SID>ShowHelp()<CR>
 
 " ----------------------------------------------------------
 " Save / quit
@@ -233,18 +298,103 @@ augroup END
 " ----------------------------------------------------------
 " File search
 " ----------------------------------------------------------
-nnoremap <leader>f :find<Space>
+nnoremap <leader>ff :find<Space>
+nnoremap <leader>fr :call <SID>OpenRecentFile()<CR>
 
 " ----------------------------------------------------------
 " Project search (pure Vim)
 " ----------------------------------------------------------
-nnoremap <leader>g :vimgrep /
+function! s:ProjectGrep(pattern) abort
+    let l:pattern = a:pattern
+    if empty(l:pattern)
+        echo 'Project search cancelled'
+        return
+    endif
+
+    let @/ = l:pattern
+    try
+        execute 'silent vimgrep /' . escape(l:pattern, '/') . '/gj **/*'
+    catch /^Vim\%((\a\+)\)\=:E480/
+        cclose
+        echom 'No project matches: ' . l:pattern
+        return
+    catch
+        echohl ErrorMsg
+        echom v:exception
+        echohl None
+        return
+    endtry
+
+    copen
+    wincmd p
+    echom 'Project matches: ' . len(getqflist())
+endfunction
+
+function! s:PromptProjectGrep() abort
+    let l:pattern = input('Project grep: ', expand('<cword>'))
+    call s:ProjectGrep(l:pattern)
+endfunction
+
+function! s:ProjectGrepWord() abort
+    let l:word = expand('<cword>')
+    if empty(l:word)
+        echo 'No word under cursor'
+        return
+    endif
+    call s:ProjectGrep('\<' . escape(l:word, '\.*$^~[]') . '\>')
+endfunction
+
+function! s:PickBuffer() abort
+    ls
+    let l:target = input('Buffer number/name: ')
+    if empty(l:target)
+        echo 'Buffer switch cancelled'
+        return
+    endif
+    try
+        execute 'buffer ' . fnameescape(l:target)
+    catch
+        echohl ErrorMsg
+        echom v:exception
+        echohl None
+    endtry
+endfunction
+
+function! s:OpenRecentFile() abort
+    if empty(v:oldfiles)
+        echo 'No recent files'
+        return
+    endif
+    oldfiles
+    let l:choice = input('Recent file number: ')
+    if l:choice !~# '^\d\+$'
+        echo 'Recent file open cancelled'
+        return
+    endif
+    let l:index = str2nr(l:choice) - 1
+    if l:index < 0 || l:index >= len(v:oldfiles)
+        echo 'Recent file number out of range'
+        return
+    endif
+    let l:file = v:oldfiles[l:index]
+    if !filereadable(l:file)
+        echo 'Recent file is not readable: ' . l:file
+        return
+    endif
+    execute 'edit ' . fnameescape(l:file)
+endfunction
+
+nnoremap <leader>g :call <SID>PromptProjectGrep()<CR>
+nnoremap <leader>fg :call <SID>PromptProjectGrep()<CR>
+nnoremap <leader>fw :call <SID>ProjectGrepWord()<CR>
 
 nnoremap ]q :cnext<CR>
 nnoremap [q :cprev<CR>
 
 nnoremap <leader>co :copen<CR>
 nnoremap <leader>cc :cclose<CR>
+
+nnoremap <leader>fb :call <SID>PickBuffer()<CR>
 
 " ----------------------------------------------------------
 " Movement improvements
@@ -278,8 +428,8 @@ set statusline=%f\ %m%r\ [%Y]\ %=%l:%c\ (%p%%)
 " ----------------------------------------------------------
 " Sessions
 " ----------------------------------------------------------
-" Keep window layout + tabs + folds in per-project sessions.
-set sessionoptions=curdir,folds,tabpages,winsize,winpos
+" Keep buffers, window layout, tabs, and folds in per-project sessions.
+set sessionoptions=buffers,curdir,folds,tabpages,winsize,winpos
 
 if has('win32')
     let s:session_dir = $HOME . '/vimfiles/sessions'
