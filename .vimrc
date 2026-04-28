@@ -147,6 +147,13 @@ set wildignore+=*/dist/*
 set wildignore+=*/build/*
 set wildignore+=*/vendor/*
 set wildignore+=*/.git/*
+set wildignore+=*/.venv/*
+set wildignore+=*/venv/*
+set wildignore+=*/coverage/*
+set wildignore+=*/.pytest_cache/*
+set wildignore+=*/.mypy_cache/*
+set wildignore+=*/.next/*
+set wildignore+=*/target/*
 
 " ----------------------------------------------------------
 " Clipboard
@@ -197,8 +204,8 @@ function! s:ShowHelp() abort
         \ '',
         \ 'Search',
         \ '  <Space>g     search project',
-        \ '  <Space>fg    search project',
         \ '  <Space>fw    search word under cursor',
+        \ '  File glob examples: **/*, **/*.py, app/**/*.js',
         \ '  ]q / [q      next / previous quickfix result',
         \ '  <Space>co    open quickfix',
         \ '  <Space>cc    close quickfix',
@@ -224,6 +231,10 @@ function! s:ShowHelp() abort
         \ '  <Space>ss    save session',
         \ '  <Space>sr    restore session',
         \ '  <Space>sd    delete session',
+        \ '',
+        \ 'Runtime files',
+        \ '  Git Bash/Linux/macOS: ~/.vim/{backup,undo,swap,sessions}',
+        \ '  Native Windows Vim: ~/vimfiles/{backup,undo,swap,sessions}',
         \ '',
         \ 'Press q to close this help.'
         \ ])
@@ -304,19 +315,20 @@ nnoremap <leader>fr :call <SID>OpenRecentFile()<CR>
 " ----------------------------------------------------------
 " Project search (pure Vim)
 " ----------------------------------------------------------
-function! s:ProjectGrep(pattern) abort
+function! s:ProjectGrep(pattern, glob) abort
     let l:pattern = a:pattern
     if empty(l:pattern)
         echo 'Project search cancelled'
         return
     endif
+    let l:glob = empty(a:glob) ? '**/*' : a:glob
 
     let @/ = l:pattern
     try
-        execute 'silent vimgrep /' . escape(l:pattern, '/') . '/gj **/*'
+        execute 'silent vimgrep /' . escape(l:pattern, '/') . '/gj ' . l:glob
     catch /^Vim\%((\a\+)\)\=:E480/
         cclose
-        echom 'No project matches: ' . l:pattern
+        echom 'No project matches: ' . l:pattern . ' in ' . l:glob
         return
     catch
         echohl ErrorMsg
@@ -327,12 +339,17 @@ function! s:ProjectGrep(pattern) abort
 
     copen
     wincmd p
-    echom 'Project matches: ' . len(getqflist())
+    echom 'Project matches: ' . len(getqflist()) . ' in ' . l:glob
 endfunction
 
 function! s:PromptProjectGrep() abort
     let l:pattern = input('Project grep: ', expand('<cword>'))
-    call s:ProjectGrep(l:pattern)
+    if empty(l:pattern)
+        call s:ProjectGrep('', '')
+        return
+    endif
+    let l:glob = input('File glob: ', '**/*')
+    call s:ProjectGrep(l:pattern, l:glob)
 endfunction
 
 function! s:ProjectGrepWord() abort
@@ -341,7 +358,8 @@ function! s:ProjectGrepWord() abort
         echo 'No word under cursor'
         return
     endif
-    call s:ProjectGrep('\<' . escape(l:word, '\.*$^~[]') . '\>')
+    let l:glob = input('File glob: ', '**/*')
+    call s:ProjectGrep('\<' . escape(l:word, '\.*$^~[]') . '\>', l:glob)
 endfunction
 
 function! s:PickBuffer() abort
@@ -385,7 +403,6 @@ function! s:OpenRecentFile() abort
 endfunction
 
 nnoremap <leader>g :call <SID>PromptProjectGrep()<CR>
-nnoremap <leader>fg :call <SID>PromptProjectGrep()<CR>
 nnoremap <leader>fw :call <SID>ProjectGrepWord()<CR>
 
 nnoremap ]q :cnext<CR>
@@ -410,7 +427,7 @@ vnoremap > >gv
 " ----------------------------------------------------------
 " Whitespace visibility
 " ----------------------------------------------------------
-set list
+set nolist
 set listchars=tab:»·,trail:·,nbsp:␣
 nnoremap <leader>l :set list!<CR>
 

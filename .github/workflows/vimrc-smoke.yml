@@ -1,0 +1,24 @@
+name: Vimrc Smoke Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  source-vimrc:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show Vim version
+        run: vim --version | head -20
+
+      - name: Source vimrc
+        run: |
+          HOME="$PWD/build-temp/vim-source-test" \
+            vim -Nu NONE -n -es \
+              -c "source .vimrc" \
+              -c "autocmd! Session" \
+              -c "qa!"

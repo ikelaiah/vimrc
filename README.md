@@ -32,15 +32,15 @@ It does **not** claim formal security certification, company policy approval, or
 
 - [x] Plugin-free
 - [x] Self-contained `.vimrc`
-- [x] Works on stock Vim (Linux, macOS, Windows)
+- [x] Works on stock Vim (Git Bash, Linux, macOS, Windows)
 - [x] Truecolor support
 - [x] Gruvbox fallback to Desert
 - [x] Sidebar file explorer
-- [x] Prompted project search using `vimgrep`
+- [x] Prompted project search using `vimgrep` with file-glob scoping
 - [x] Search word under cursor across the project
 - [x] In-editor shortcut cheatsheet
 - [x] Recent-file and buffer pickers
-- [x] Whitespace visibility (tabs, trailing spaces, nbsp)
+- [x] Toggleable whitespace visibility (tabs, trailing spaces, nbsp)
 - [x] Language-aware indentation (consistent tabstop/shiftwidth/softtabstop per filetype)
 - [x] Count-aware `j`/`k` motion (works with `5j`, `10k`, etc.)
 - [x] Hidden buffers for easier switching between unsaved files
@@ -48,23 +48,9 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Centralized swap files for crash recovery
 - [x] Auto-reload files changed outside Vim
 - [x] Per-project auto-save and restore sessions (terminal buffers excluded)
+- [x] CI smoke test that sources `.vimrc`
 
-Supported languages:
-
-- SQL
-- CSS
-- JavaScript
-- Python
-- JSON
-- Markdown
-- PHP
-- YAML
-- TOML
-- INI
-- Lua
-- C / C++
-- Java
-- Object Pascal
+Vim's built-in filetype detection handles many languages. This configuration only adds a small set of indentation defaults where they improve day-to-day editing.
 
 ## Screenshot
 
@@ -76,7 +62,7 @@ Editing Python with:
 
 - relative line numbers
 - cursor line highlight
-- whitespace markers
+- toggleable whitespace markers
 - color column at 100
 - Gruvbox theme
 
@@ -90,7 +76,15 @@ Editing Python with:
 ~/.vimrc
 ```
 
-### Windows
+### Git Bash on Windows
+
+```text
+~/.vimrc
+```
+
+Git Bash Vim behaves like a Unix Vim build, so it uses `~/.vimrc` and stores runtime files under `~/.vim/`.
+
+### Native Windows Vim
 
 ```text
 %USERPROFILE%\_vimrc
@@ -106,8 +100,8 @@ Restart Vim after installing.
 
 This configuration does not require plugins or external tools, but Vim still creates local recovery and history files. They are kept in central folders instead of being scattered through project directories.
 
-| File type | Linux / macOS | Windows | Purpose |
-| --------- | ------------- | ------- | ------- |
+| File type | Git Bash / Linux / macOS | Native Windows Vim | Purpose |
+| --------- | ------------------------ | ------------------ | ------- |
 | Backups   | `~/.vim/backup/` | `~/vimfiles/backup/` | Last saved file copies |
 | Undo      | `~/.vim/undo/` | `~/vimfiles/undo/` | Persistent undo history |
 | Swap      | `~/.vim/swap/` | `~/vimfiles/swap/` | Crash recovery for unsaved edits |
@@ -119,13 +113,13 @@ These files can contain source text. Treat those directories as part of your nor
 
 ## Quick Install
 
-### Linux / macOS (curl)
+### Git Bash / Linux / macOS
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ikelaiah/vimrc/main/.vimrc -o ~/.vimrc
 ```
 
-### Windows (PowerShell)
+### Native Windows Vim (PowerShell)
 
 ```powershell
 Invoke-WebRequest https://raw.githubusercontent.com/ikelaiah/vimrc/main/.vimrc -OutFile $HOME\_vimrc
@@ -197,7 +191,6 @@ Space ?
 | Action                   | Shortcut   |
 | ------------------------ | ---------- |
 | Search project           | `Space g`  |
-| Search project alias     | `Space fg` |
 | Search word under cursor | `Space fw` |
 | Next result              | `]q`       |
 | Previous result          | `[q`       |
@@ -210,7 +203,9 @@ Example:
 :vimgrep /TODO/ **/*.py
 ```
 
-`Space g` and `Space fg` prompt for the search term, run `vimgrep`, and open the quickfix list automatically.
+`Space g` prompts for a search term and file glob, runs `vimgrep`, and opens the quickfix list automatically. Use `**/*` for everything, `**/*.py` for Python, or a narrower glob such as `app/**/*.js`.
+
+`Space fw` searches the word under the cursor and also prompts for the file glob.
 
 ---
 
@@ -332,7 +327,7 @@ Toggle wrap:
 Space z
 ```
 
-Toggle whitespace markers:
+Whitespace markers are off by default. Toggle them when you need to inspect tabs, trailing spaces, or non-breaking spaces:
 
 ```text
 Space l
@@ -357,6 +352,12 @@ Usable in environments that forbid editor plugins, package managers, or external
 ### Speed
 
 Navigation should be faster than thinking.
+
+---
+
+## CI Smoke Test
+
+The GitHub Actions workflow sources `.vimrc` with Vim in Ex mode. It catches syntax errors and line-ending regressions without installing runtime plugins.
 
 ---
 
