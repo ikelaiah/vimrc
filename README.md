@@ -82,11 +82,15 @@ Editing Python with:
 
 ### Linux / macOS
 
+Save the `.vimrc` as:
+
 ```text
 ~/.vimrc
 ```
 
 ### Git Bash on Windows
+
+Save the `.vimrc` as:
 
 ```text
 ~/.vimrc
@@ -95,6 +99,8 @@ Editing Python with:
 Git Bash Vim behaves like a Unix Vim build, so it uses `~/.vimrc` and stores runtime files under `~/.vim/`.
 
 ### Native Windows Vim
+
+Save the `.vimrc` as:
 
 ```text
 %USERPROFILE%\_vimrc
