@@ -40,7 +40,7 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Truecolor support
 - [x] Gruvbox fallback to Desert
 - [x] Early UTF-8 encoding setup for portable whitespace markers
-- [x] Sidebar file explorer
+- [x] Sidebar file explorer that toggles cleanly from any buffer
 - [x] Prompted project search using `vimgrep` with file-glob scoping
 - [x] Search word under cursor across the project
 - [x] In-editor shortcut cheatsheet
@@ -163,13 +163,13 @@ colorscheme desert
 
 ## Sidebar File Explorer
 
-Open the sidebar file explorer:
+Toggle the sidebar file explorer:
 
 ```text
 Space e
 ```
 
-This uses Vim's built-in **netrw** in sidebar mode (`Lexplore`).
+This uses Vim's built-in **netrw** in sidebar mode (`Lexplore`). Press `Space e` again from any buffer to close the existing sidebar.
 
 Features:
 

@@ -312,7 +312,7 @@ let g:netrw_sort_by = 'name'
 let g:netrw_keepdir = 1
 
 " Sidebar explorer toggle
-nnoremap <leader>e :call <SID>OpenProjectExplorer()<CR>
+nnoremap <silent> <leader>e :call <SID>OpenProjectExplorer()<CR>
 
 " Fix C-l conflict with netrw's refresh binding
 augroup NetrwFix
@@ -578,8 +578,59 @@ function! s:ProjectRoot() abort
     return s:startup_root
 endfunction
 
+function! s:FindProjectExplorerWindow() abort
+    let l:fallback = 0
+    for l:winnr in range(1, winnr('$'))
+        let l:buf = winbufnr(l:winnr)
+        if getwinvar(l:winnr, 'corporate_safe_project_explorer', 0)
+            return l:winnr
+        endif
+        if l:fallback == 0 && getbufvar(l:buf, '&filetype') ==# 'netrw'
+            let l:fallback = l:winnr
+        endif
+    endfor
+    return l:fallback
+endfunction
+
+function! s:CloseProjectExplorer(winnr) abort
+    let l:current = exists('*win_getid') ? win_getid() : 0
+    execute a:winnr . 'wincmd w'
+    if winnr('$') > 1
+        close
+    else
+        enew
+    endif
+    if l:current != 0 && win_gotoid(l:current)
+        return
+    endif
+    silent! wincmd p
+endfunction
+
 function! s:OpenProjectExplorer() abort
-    execute 'Lexplore ' . fnameescape(s:ProjectRoot())
+    let l:explorer = s:FindProjectExplorerWindow()
+    if l:explorer > 0
+        call s:CloseProjectExplorer(l:explorer)
+        return
+    endif
+
+    let l:current = exists('*win_getid') ? win_getid() : 0
+    try
+        execute 'silent keepalt Lexplore ' . fnameescape(s:ProjectRoot())
+    catch
+        echohl ErrorMsg
+        echom 'Project explorer failed: ' . v:exception
+        echohl None
+        return
+    endtry
+
+    let l:explorer = s:FindProjectExplorerWindow()
+    if l:explorer > 0
+        call setwinvar(l:explorer, 'corporate_safe_project_explorer', 1)
+        call setwinvar(l:explorer, '&winfixwidth', 1)
+    endif
+    if l:current != 0
+        call win_gotoid(l:current)
+    endif
 endfunction
 
 function! s:CurrentSessionRoot() abort

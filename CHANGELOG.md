@@ -16,6 +16,7 @@ All notable changes to this project are documented here.
 
 - Truecolor is now enabled with a guarded `silent! set termguicolors` path so non-truecolor environments continue startup.
 - Encoding is set to UTF-8 early so list characters load correctly in Git Bash Vim.
+- The `Space e` file explorer mapping now silently toggles an existing netrw sidebar from any buffer.
 - Session save and restore now report real failures instead of silently claiming success.
 - Project grep now rejects file globs containing command separators or control characters.
 - README now documents the versioned baseline, runtime directory fallback behavior, and the new editing safeguards.
