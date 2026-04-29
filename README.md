@@ -5,6 +5,8 @@
 </p>
 
 ![Vim 8+](https://img.shields.io/badge/Vim-8%2B-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.0-informational)
+[![Vimrc Smoke Test](https://github.com/ikelaiah/vimrc/actions/workflows/vimrc-smoke.yml/badge.svg)](https://github.com/ikelaiah/vimrc/actions/workflows/vimrc-smoke.yml)
 ![Made with Vim](https://img.shields.io/badge/Made%20with-Vim-019733)
 ![Plugins](https://img.shields.io/badge/plugins-none-blue)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-success)
@@ -17,6 +19,8 @@ A **pure Vim configuration designed for restricted corporate environments**.
 No additional Vim plugins. No package managers. No Python / Node / ripgrep / ctags calls. No external binaries required.
 
 Just **stock Vim features used effectively**.
+
+Current release: **1.0.0**. See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -35,19 +39,25 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Works on stock Vim (Git Bash, Linux, macOS, Windows)
 - [x] Truecolor support
 - [x] Gruvbox fallback to Desert
+- [x] Early UTF-8 encoding setup for portable whitespace markers
 - [x] Sidebar file explorer
 - [x] Prompted project search using `vimgrep` with file-glob scoping
 - [x] Search word under cursor across the project
 - [x] In-editor shortcut cheatsheet
 - [x] Recent-file and buffer pickers
 - [x] Toggleable whitespace visibility (tabs, trailing spaces, nbsp)
+- [x] Brief yank highlighting using built-in Vim match/timer support
 - [x] Language-aware indentation (consistent tabstop/shiftwidth/softtabstop per filetype)
 - [x] Count-aware `j`/`k` motion (works with `5j`, `10k`, etc.)
 - [x] Hidden buffers for easier switching between unsaved files
 - [x] Smarter built-in completion and command-line matching
-- [x] Centralized swap files for crash recovery
+- [x] Centralized backup, undo, swap, and session files when Vim can create the runtime directories
 - [x] Auto-reload files changed outside Vim
 - [x] Per-project auto-save and restore sessions (terminal buffers excluded)
+- [x] Guarded session save/restore errors so failed session writes are not reported as success
+- [x] Safer truecolor probing for terminals that expose the option but cannot enable it
+- [x] Safer prompted project search that rejects command separators in file globs
+- [x] Quickfix next/previous mappings with readable boundary errors
 - [x] CI smoke test that sources `.vimrc`
 
 Vim's built-in filetype detection handles many languages. This configuration only adds a small set of indentation defaults where they improve day-to-day editing.
@@ -108,6 +118,8 @@ This configuration does not require plugins or external tools, but Vim still cre
 | Sessions  | `~/.vim/sessions/` | `~/vimfiles/sessions/` | Per-project window and buffer layout |
 
 These files can contain source text. Treat those directories as part of your normal development footprint and clear them according to your company's retention rules.
+
+If Vim cannot create one of these directories, startup continues and Vim falls back to its default behavior for the affected feature. Sessions are disabled until the session directory is available.
 
 ---
 
@@ -315,12 +327,6 @@ Clear search highlight:
 Space /
 ```
 
-Toggle paste mode:
-
-```text
-F2
-```
-
 Toggle wrap:
 
 ```text
@@ -333,7 +339,9 @@ Whitespace markers are off by default. Toggle them when you need to inspect tabs
 Space l
 ```
 
-Trailing whitespace is visually highlighted but not automatically removed on save.
+Trailing whitespace markers are visible when whitespace markers are enabled, but whitespace is not automatically removed on save.
+
+Yanked text is briefly highlighted when the running Vim supports `TextYankPost`, `matchaddpos()`, and timers.
 
 ---
 
@@ -357,7 +365,7 @@ Navigation should be faster than thinking.
 
 ## CI Smoke Test
 
-The GitHub Actions workflow sources `.vimrc` with Vim in Ex mode. It catches syntax errors and line-ending regressions without installing runtime plugins.
+The GitHub Actions workflow sources `.vimrc` with Vim in Ex mode and an isolated `HOME`. It catches syntax errors, runtime directory regressions, and line-ending regressions without installing runtime plugins.
 
 ---
 

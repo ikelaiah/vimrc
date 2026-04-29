@@ -4,6 +4,11 @@
 " ==========================================================
 
 set nocompatible
+if has('multi_byte')
+    set encoding=utf-8
+    set fileencodings=utf-8,default,latin1
+endif
+let g:corporate_safe_vim_version = '1.0.0'
 filetype plugin indent on
 syntax on
 
@@ -16,42 +21,46 @@ let mapleader=" "
 " Ensure vim directories exist
 " ==========================================================
 
-if has('win32')
-    if !isdirectory($HOME."/vimfiles/backup")
-        call mkdir($HOME."/vimfiles/backup", "p")
+function! s:EnsureDir(path) abort
+    let l:path = expand(a:path)
+    if isdirectory(l:path)
+        return l:path
     endif
-    if !isdirectory($HOME."/vimfiles/undo")
-        call mkdir($HOME."/vimfiles/undo", "p")
+    try
+        call mkdir(l:path, 'p')
+    catch
+        echohl WarningMsg
+        echom 'Could not create Vim directory: ' . l:path
+        echom 'Using Vim defaults for the affected feature.'
+        echohl None
+        return ''
+    endtry
+    if isdirectory(l:path)
+        return l:path
     endif
-    if !isdirectory($HOME."/vimfiles/swap")
-        call mkdir($HOME."/vimfiles/swap", "p")
-    endif
-    if !isdirectory($HOME."/vimfiles/sessions")
-        call mkdir($HOME."/vimfiles/sessions", "p")
-    endif
+    echohl WarningMsg
+    echom 'Could not create Vim directory: ' . l:path
+    echom 'Using Vim defaults for the affected feature.'
+    echohl None
+    return ''
+endfunction
+
+if has('win32') || has('win64')
+    let s:state_root = $HOME . '/vimfiles'
 else
-    if !isdirectory($HOME."/.vim")
-        call mkdir($HOME."/.vim", "p")
-    endif
-    if !isdirectory($HOME."/.vim/backup")
-        call mkdir($HOME."/.vim/backup", "p")
-    endif
-    if !isdirectory($HOME."/.vim/undo")
-        call mkdir($HOME."/.vim/undo", "p")
-    endif
-    if !isdirectory($HOME."/.vim/swap")
-        call mkdir($HOME."/.vim/swap", "p")
-    endif
-    if !isdirectory($HOME."/.vim/sessions")
-        call mkdir($HOME."/.vim/sessions", "p")
-    endif
+    let s:state_root = $HOME . '/.vim'
 endif
+
+let s:backup_dir = s:EnsureDir(s:state_root . '/backup')
+let s:undo_dir = s:EnsureDir(s:state_root . '/undo')
+let s:swap_dir = s:EnsureDir(s:state_root . '/swap')
+let s:session_dir = s:EnsureDir(s:state_root . '/sessions')
 
 " ----------------------------------------------------------
 " Truecolor if supported
 " ----------------------------------------------------------
-if has("termguicolors")
-    set termguicolors
+if exists('&termguicolors')
+    silent! set termguicolors
 endif
 
 " ----------------------------------------------------------
@@ -107,13 +116,15 @@ set smartcase
 set incsearch
 set hlsearch
 set nowrapscan
+if exists('&inccommand')
+    set inccommand=nosplit
+endif
 
 nnoremap <leader>/ :nohlsearch<CR>
 
 " ----------------------------------------------------------
 " Performance
 " ----------------------------------------------------------
-set lazyredraw
 set updatetime=300
 set synmaxcol=240
 set hidden
@@ -128,6 +139,7 @@ set shiftwidth=4
 set softtabstop=4
 
 set autoindent
+set nrformats-=octal
 
 augroup FileTypeSettings
     autocmd!
@@ -169,6 +181,7 @@ set backup
 set writebackup
 set swapfile
 set undofile
+set diffopt+=vertical
 
 set autoread
 augroup AutoRead
@@ -176,14 +189,14 @@ augroup AutoRead
     autocmd FocusGained,BufEnter * checktime
 augroup END
 
-if has('win32')
-    set backupdir=~/vimfiles/backup//
-    set directory=~/vimfiles/swap//
-    set undodir=~/vimfiles/undo//
-else
-    set backupdir=~/.vim/backup//
-    set directory=~/.vim/swap//
-    set undodir=~/.vim/undo//
+if !empty(s:backup_dir)
+    let &backupdir = s:backup_dir . '//'
+endif
+if !empty(s:swap_dir)
+    let &directory = s:swap_dir . '//'
+endif
+if !empty(s:undo_dir)
+    let &undodir = s:undo_dir . '//'
 endif
 
 " ----------------------------------------------------------
@@ -195,6 +208,7 @@ function! s:ShowHelp() abort
     file Corporate-Safe-Vim-Help
     call setline(1, [
         \ 'Corporate-Safe Vim Cheatsheet (Plugin-Free)',
+        \ 'Version ' . get(g:, 'corporate_safe_vim_version', 'unknown'),
         \ '',
         \ 'Files',
         \ '  <Space>ff    find file in project path',
@@ -322,6 +336,12 @@ function! s:ProjectGrep(pattern, glob) abort
         return
     endif
     let l:glob = empty(a:glob) ? '**/*' : a:glob
+    if l:glob =~# '[|[:cntrl:]]'
+        echohl ErrorMsg
+        echom 'Unsafe file glob. Avoid command separators and control characters.'
+        echohl None
+        return
+    endif
 
     let @/ = l:pattern
     try
@@ -405,8 +425,22 @@ endfunction
 nnoremap <leader>g :call <SID>PromptProjectGrep()<CR>
 nnoremap <leader>fw :call <SID>ProjectGrepWord()<CR>
 
-nnoremap ]q :cnext<CR>
-nnoremap [q :cprev<CR>
+function! s:QuickfixStep(direction) abort
+    try
+        if a:direction > 0
+            cnext
+        else
+            cprevious
+        endif
+    catch
+        echohl WarningMsg
+        echom v:exception
+        echohl None
+    endtry
+endfunction
+
+nnoremap ]q :call <SID>QuickfixStep(1)<CR>
+nnoremap [q :call <SID>QuickfixStep(-1)<CR>
 
 nnoremap <leader>co :copen<CR>
 nnoremap <leader>cc :cclose<CR>
@@ -432,9 +466,56 @@ set listchars=tab:»·,trail:·,nbsp:␣
 nnoremap <leader>l :set list!<CR>
 
 " ----------------------------------------------------------
-" Paste mode
+" Yank highlight and wrap
 " ----------------------------------------------------------
-set pastetoggle=<F2>
+let s:yank_match_id = -1
+
+function! s:ClearYankHighlight(timer) abort
+    if s:yank_match_id != -1
+        silent! call matchdelete(s:yank_match_id)
+        let s:yank_match_id = -1
+    endif
+endfunction
+
+function! s:HighlightYank() abort
+    if !exists('*matchaddpos') || !exists('*timer_start')
+        return
+    endif
+    if s:yank_match_id != -1
+        silent! call matchdelete(s:yank_match_id)
+        let s:yank_match_id = -1
+    endif
+    let l:start = getpos("'[")
+    let l:end = getpos("']")
+    if l:start[1] <= 0 || l:end[1] <= 0
+        return
+    endif
+    let l:positions = []
+    let l:last_line = min([l:end[1], l:start[1] + 80])
+    for l:lnum in range(l:start[1], l:last_line)
+        if l:lnum == l:start[1] && l:lnum == l:end[1]
+            call add(l:positions, [l:lnum, l:start[2], max([1, l:end[2] - l:start[2] + 1])])
+        elseif l:lnum == l:start[1]
+            call add(l:positions, [l:lnum, l:start[2]])
+        elseif l:lnum == l:end[1]
+            call add(l:positions, [l:lnum, 1, max([1, l:end[2]])])
+        else
+            call add(l:positions, [l:lnum])
+        endif
+    endfor
+    if !empty(l:positions)
+        let s:yank_match_id = matchaddpos('IncSearch', l:positions, 10)
+        call timer_start(180, function('<SID>ClearYankHighlight'))
+    endif
+endfunction
+
+augroup HighlightYank
+    autocmd!
+    if exists('##TextYankPost')
+        autocmd TextYankPost * silent! call s:HighlightYank()
+    endif
+augroup END
+
 nnoremap <leader>z :set wrap!<CR>
 
 " ----------------------------------------------------------
@@ -447,12 +528,6 @@ set statusline=%f\ %m%r\ [%Y]\ %=%l:%c\ (%p%%)
 " ----------------------------------------------------------
 " Keep buffers, window layout, tabs, and folds in per-project sessions.
 set sessionoptions=buffers,curdir,folds,tabpages,winsize,winpos
-
-if has('win32')
-    let s:session_dir = $HOME . '/vimfiles/sessions'
-else
-    let s:session_dir = $HOME . '/.vim/sessions'
-endif
 
 let s:auto_session_root = ''
 let s:startup_root = ''
@@ -533,7 +608,22 @@ function! s:SessionKey(path) abort
 endfunction
 
 function! s:CurrentSessionFile() abort
+    if empty(s:session_dir)
+        return ''
+    endif
     return s:session_dir . '/' . s:SessionKey(s:CurrentSessionRoot()) . '.vim'
+endfunction
+
+function! s:SessionAvailable(show_messages) abort
+    if !empty(s:session_dir) && isdirectory(s:session_dir)
+        return 1
+    endif
+    if a:show_messages
+        echohl WarningMsg
+        echom 'Sessions unavailable: session directory could not be created.'
+        echohl None
+    endif
+    return 0
 endfunction
 
 function! s:IsTerminalBuffer(bufnr) abort
@@ -599,6 +689,9 @@ function! s:CleanMissingBuffers() abort
 endfunction
 
 function! s:SaveCurrentSession(force_for_exit) abort
+    if !s:SessionAvailable(!a:force_for_exit)
+        return
+    endif
     let l:session_file = s:CurrentSessionFile()
     if a:force_for_exit
         call s:DropTerminalBuffers()
@@ -608,7 +701,14 @@ function! s:SaveCurrentSession(force_for_exit) abort
         echohl None
         return
     endif
-    silent! execute 'mksession! ' . fnameescape(l:session_file)
+    try
+        execute 'mksession! ' . fnameescape(l:session_file)
+    catch
+        echohl ErrorMsg
+        echom 'Session save failed: ' . v:exception
+        echohl None
+        return
+    endtry
     let v:this_session = l:session_file
     if !a:force_for_exit
         echom 'Session saved: ' . fnamemodify(s:CurrentSessionRoot(), ':~')
@@ -616,6 +716,9 @@ function! s:SaveCurrentSession(force_for_exit) abort
 endfunction
 
 function! s:RestoreCurrentSession(show_messages) abort
+    if !s:SessionAvailable(a:show_messages)
+        return
+    endif
     let l:session_file = s:CurrentSessionFile()
     call s:DropTerminalBuffers()
     if !filereadable(l:session_file)
@@ -624,7 +727,14 @@ function! s:RestoreCurrentSession(show_messages) abort
         endif
         return
     endif
-    silent! execute 'source ' . fnameescape(l:session_file)
+    try
+        execute 'source ' . fnameescape(l:session_file)
+    catch
+        echohl ErrorMsg
+        echom 'Session restore failed: ' . v:exception
+        echohl None
+        return
+    endtry
     call s:CleanMissingBuffers()
     let v:this_session = l:session_file
     if a:show_messages
@@ -633,6 +743,9 @@ function! s:RestoreCurrentSession(show_messages) abort
 endfunction
 
 function! s:DeleteCurrentSession() abort
+    if !s:SessionAvailable(1)
+        return
+    endif
     let l:session_file = s:CurrentSessionFile()
     if delete(l:session_file) == 0
         echom 'Session deleted: ' . fnamemodify(s:CurrentSessionRoot(), ':~')
