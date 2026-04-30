@@ -17,8 +17,109 @@ jobs:
 
       - name: Source vimrc
         run: |
+          mkdir -p build-temp
           HOME="$PWD/build-temp/vim-source-test" \
             vim -Nu NONE -n -es \
               -c "source .vimrc" \
               -c "autocmd! Session" \
               -c "qa!"
+
+      - name: Prepare smoke scripts
+        run: |
+          mkdir -p build-temp
+
+          cat > build-temp/check-relative-number.vim <<'VIM'
+          set nomore
+          if &relativenumber
+            cquit
+          endif
+          call feedkeys("\<Space>rn", 'xt')
+          if !&relativenumber
+            cquit
+          endif
+          autocmd! Session
+          qa!
+          VIM
+
+          cat > build-temp/check-netrw-toggle.vim <<'VIM'
+          set nomore
+          edit README.md
+          call feedkeys("\<Space>e", 'xt')
+          if winnr('$') < 2
+            cquit
+          endif
+          let s:filetypes = map(range(1, winnr('$')), 'getbufvar(winbufnr(v:val), "&filetype")')
+          if index(s:filetypes, 'netrw') < 0
+            cquit
+          endif
+          edit CHANGELOG.md
+          call feedkeys("\<Space>e", 'xt')
+          if winnr('$') != 1
+            cquit
+          endif
+          autocmd! Session
+          qa!
+          VIM
+
+          cat > build-temp/check-session.vim <<'VIM'
+          set nomore
+          edit README.md
+          call feedkeys("\<Space>ss", 'xt')
+          let s:session_files = glob(expand('~/.vim/sessions/*.vim')) . glob(expand('~/vimfiles/sessions/*.vim'))
+          if empty(s:session_files)
+            cquit
+          endif
+          bwipeout!
+          call feedkeys("\<Space>sr", 'xt')
+          if bufnr('README.md') < 0
+            cquit
+          endif
+          autocmd! Session
+          qa!
+          VIM
+
+          cat > build-temp/check-health.vim <<'VIM'
+          set nomore
+          CorporateSafeHealth
+          if bufname('%') !=# 'Corporate-Safe-Vim-Health'
+            cquit
+          endif
+          if search('External tools required: no', 'n') == 0
+            cquit
+          endif
+          if search('Auto sessions: yes', 'n') == 0
+            cquit
+          endif
+          bwipeout!
+          let g:corporate_safe_auto_sessions = 0
+          CorporateSafeHealth
+          if search('Auto sessions: no', 'n') == 0
+            cquit
+          endif
+          autocmd! Session
+          qa!
+          VIM
+
+      - name: Check relative-number toggle
+        run: |
+          HOME="$PWD/build-temp/vim-relative-number-test" \
+            vim -Nu "$PWD/.vimrc" -n -es -i NONE \
+              -S build-temp/check-relative-number.vim
+
+      - name: Check netrw sidebar toggle
+        run: |
+          HOME="$PWD/build-temp/vim-netrw-test" \
+            vim -Nu "$PWD/.vimrc" -n -es -i NONE \
+              -S build-temp/check-netrw-toggle.vim
+
+      - name: Check session save and restore
+        run: |
+          HOME="$PWD/build-temp/vim-session-test" \
+            vim -Nu "$PWD/.vimrc" -n -es -i NONE \
+              -S build-temp/check-session.vim
+
+      - name: Check health command and auto-session toggle
+        run: |
+          HOME="$PWD/build-temp/vim-health-test" \
+            vim -Nu "$PWD/.vimrc" -n -es -i NONE \
+              -S build-temp/check-health.vim

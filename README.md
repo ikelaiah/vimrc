@@ -44,6 +44,7 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Prompted project search using `vimgrep` with file-glob scoping
 - [x] Search word under cursor across the project
 - [x] In-editor shortcut cheatsheet
+- [x] In-editor health report for locked-down workstation debugging
 - [x] Recent-file picker
 - [x] Toggleable whitespace visibility (tabs, trailing spaces, nbsp)
 - [x] Toggleable relative line numbers, off by default
@@ -55,11 +56,12 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Centralized backup, undo, swap, and session files when Vim can create the runtime directories
 - [x] Auto-reload files changed outside Vim
 - [x] Per-project auto-save and restore sessions (terminal buffers excluded)
+- [x] Auto-session opt-out through `g:corporate_safe_auto_sessions`
 - [x] Guarded session save/restore errors so failed session writes are not reported as success
 - [x] Safer truecolor probing for terminals that expose the option but cannot enable it
 - [x] Safer prompted project search that rejects command separators in file globs
 - [x] Quickfix next/previous mappings with readable boundary errors
-- [x] CI smoke test that sources `.vimrc`
+- [x] CI smoke tests for sourcing, relative-number toggle, netrw toggle, sessions, and health output
 
 Vim's built-in filetype detection handles many languages. This configuration only adds a small set of indentation defaults where they improve day-to-day editing.
 
@@ -286,6 +288,12 @@ Sessions save and restore your open buffers, window layout, tabs, and folds on a
 
 **Auto-save / auto-restore:** When Vim is opened with no file arguments, or with a single directory argument such as `vim .`, Vim restores the session for that directory on startup and saves back to that same directory-specific session on exit.
 
+Auto sessions are enabled by default to keep folder opens feeling like VS Code. To opt out, set this near the top of `.vimrc`:
+
+```vim
+let g:corporate_safe_auto_sessions = 0
+```
+
 **Terminal safety:** Auto-save wipes terminal buffers before the session file is written, so a broken `:terminal` can never poison the saved project session. Manual `Space ss` refuses to save while terminal buffers are open; quit Vim normally instead and the auto-save path will strip them safely.
 
 **Safe restore:** The following buffer types are automatically discarded on restore:
@@ -359,6 +367,18 @@ Yanked text is briefly highlighted when the running Vim supports `TextYankPost`,
 
 ---
 
+## Diagnostics
+
+Open a stock-Vim health report:
+
+```vim
+:CorporateSafeHealth
+```
+
+The report shows the config version, Vim version, plugin/external-tool requirements, feature support, runtime directory status, project/session paths, netrw availability, auto-session state, and key mappings.
+
+---
+
 ## Philosophy
 
 This configuration focuses on three principles:
@@ -379,7 +399,7 @@ Navigation should be faster than thinking.
 
 ## CI Smoke Test
 
-The GitHub Actions workflow sources `.vimrc` with Vim in Ex mode and an isolated `HOME`. It catches syntax errors, runtime directory regressions, and line-ending regressions without installing runtime plugins.
+The GitHub Actions workflow runs `.vimrc` with Vim in Ex mode and isolated `HOME` directories. It catches syntax errors, runtime directory regressions, line-ending regressions, relative-number toggle regressions, netrw sidebar toggle regressions, session save/restore regressions, and health-report regressions without installing runtime plugins.
 
 ---
 

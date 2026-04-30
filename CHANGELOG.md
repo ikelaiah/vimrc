@@ -10,14 +10,18 @@ All notable changes to this project are documented here.
 - Added defensive runtime directory creation for backup, undo, swap, and session storage.
 - Added yank highlighting through built-in Vim match/timer APIs when available.
 - Added safer quickfix navigation wrappers for `]q` and `[q`.
+- Added CI smoke coverage for relative-number toggling, netrw sidebar toggling, and session save/restore.
+- Added `:CorporateSafeHealth` for stock-Vim diagnostics on locked-down workstations.
 - Added README badges for version and the GitHub Actions smoke test.
 
 ### Changed
 
 - Truecolor is now enabled with a guarded `silent! set termguicolors` path so non-truecolor environments continue startup.
+- Theme fallback now guards both `gruvbox` and `desert` so stripped-down Vim runtimes keep starting.
 - Encoding is set to UTF-8 early so list characters load correctly in Git Bash Vim.
 - The `Space e` file explorer mapping now silently toggles an existing netrw sidebar from any buffer.
 - Relative line numbers are now off by default and toggle with `Space rn`.
+- Auto sessions remain enabled by default and can be disabled with `g:corporate_safe_auto_sessions = 0`.
 - Session save and restore now report real failures instead of silently claiming success.
 - Project grep now rejects file globs containing command separators or control characters.
 - README now documents the versioned baseline, runtime directory fallback behavior, and the new editing safeguards.

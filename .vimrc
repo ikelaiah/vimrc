@@ -9,6 +9,7 @@ if has('multi_byte')
     set fileencodings=utf-8,default,latin1
 endif
 let g:corporate_safe_vim_version = '1.0.0'
+let g:corporate_safe_auto_sessions = get(g:, 'corporate_safe_auto_sessions', 1)
 filetype plugin indent on
 syntax on
 
@@ -69,7 +70,7 @@ endif
 set background=dark
 silent! colorscheme gruvbox
 if !exists('g:colors_name') || g:colors_name !=# "gruvbox"
-    colorscheme desert
+    silent! colorscheme desert
 endif
 
 " ----------------------------------------------------------
@@ -247,6 +248,9 @@ function! s:ShowHelp() abort
         \ '  <Space>sr    restore session',
         \ '  <Space>sd    delete session',
         \ '',
+        \ 'Diagnostics',
+        \ '  :CorporateSafeHealth show configuration health',
+        \ '',
         \ 'Runtime files',
         \ '  Git Bash/Linux/macOS: ~/.vim/{backup,undo,swap,sessions}',
         \ '  Native Windows Vim: ~/vimfiles/{backup,undo,swap,sessions}',
@@ -257,7 +261,79 @@ function! s:ShowHelp() abort
     setlocal nomodifiable nomodified
 endfunction
 
+function! s:YesNo(value) abort
+    return a:value ? 'yes' : 'no'
+endfunction
+
+function! s:PathStatus(path) abort
+    if empty(a:path)
+        return 'unavailable'
+    endif
+    return fnamemodify(a:path, ':~') . ' [' . (isdirectory(a:path) ? 'ok' : 'missing') . ']'
+endfunction
+
+function! s:OptionStatus(option, value) abort
+    return exists(a:option) ? s:YesNo(a:value) : 'unavailable'
+endfunction
+
+function! s:NetrwStatus() abort
+    return exists(':Lexplore') == 2 ? 'available' : 'unavailable'
+endfunction
+
+function! s:ShowHealth() abort
+    let l:session_file = s:CurrentSessionFile()
+    let l:vim_version = printf('%d.%02d', v:version / 100, v:version % 100)
+    botright new
+    setlocal buftype=nofile bufhidden=wipe noswapfile nobuflisted
+    file Corporate-Safe-Vim-Health
+    call setline(1, [
+        \ 'Corporate-Safe Vim Health',
+        \ '',
+        \ 'Config',
+        \ '  Version: ' . get(g:, 'corporate_safe_vim_version', 'unknown'),
+        \ '  Vim: ' . l:vim_version,
+        \ '  Plugins required: no',
+        \ '  External tools required: no',
+        \ '',
+        \ 'Features',
+        \ '  Clipboard: ' . s:YesNo(has('clipboard')),
+        \ '  Truecolor option: ' . s:YesNo(exists('&termguicolors')),
+        \ '  Truecolor enabled: ' . s:OptionStatus('&termguicolors', exists('&termguicolors') && &termguicolors),
+        \ '  Netrw Lexplore: ' . s:NetrwStatus(),
+        \ '  TextYankPost: ' . s:YesNo(exists('##TextYankPost')),
+        \ '  Timers: ' . s:YesNo(exists('*timer_start')),
+        \ '  SHA-256: ' . s:YesNo(exists('*sha256')),
+        \ '',
+        \ 'Runtime Directories',
+        \ '  Backup: ' . s:PathStatus(s:backup_dir),
+        \ '  Undo: ' . s:PathStatus(s:undo_dir),
+        \ '  Swap: ' . s:PathStatus(s:swap_dir),
+        \ '  Sessions: ' . s:PathStatus(s:session_dir),
+        \ '',
+        \ 'Project and Sessions',
+        \ '  Auto sessions: ' . s:YesNo(get(g:, 'corporate_safe_auto_sessions', 1)),
+        \ '  Auto session for current launch: ' . s:YesNo(s:ShouldAutoSession()),
+        \ '  Project root: ' . fnamemodify(s:ProjectRoot(), ':~'),
+        \ '  Current session root: ' . fnamemodify(s:CurrentSessionRoot(), ':~'),
+        \ '  Current session file: ' . (empty(l:session_file) ? 'unavailable' : fnamemodify(l:session_file, ':~')),
+        \ '  Session file exists: ' . s:YesNo(!empty(l:session_file) && filereadable(l:session_file)),
+        \ '',
+        \ 'Mappings',
+        \ '  <Space>?   help',
+        \ '  <Space>e   toggle netrw explorer',
+        \ '  <Space>rn  toggle relative line numbers',
+        \ '  <Space>ss  save session',
+        \ '  <Space>sr  restore session',
+        \ '  <Space>sd  delete session',
+        \ '',
+        \ 'Press q to close this health report.'
+        \ ])
+    nnoremap <buffer> q :close<CR>
+    setlocal nomodifiable nomodified
+endfunction
+
 nnoremap <leader>? :call <SID>ShowHelp()<CR>
+command! CorporateSafeHealth call <SID>ShowHealth()
 
 " ----------------------------------------------------------
 " Save / quit
@@ -519,6 +595,9 @@ let s:startup_root = ''
 " Auto-restore session when Vim starts with no file args, or with only a directory arg.
 " Auto-save session on exit in those same cases.
 function! s:ShouldAutoSession() abort
+    if !get(g:, 'corporate_safe_auto_sessions', 1)
+        return 0
+    endif
     if argc() == 0
         return 1
     endif
