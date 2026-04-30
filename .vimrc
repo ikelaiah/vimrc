@@ -82,7 +82,7 @@ set shortmess+=I
 " Interface
 " ----------------------------------------------------------
 set number
-set relativenumber
+set norelativenumber
 set cursorline
 if exists('&signcolumn')
     set signcolumn=yes
@@ -239,6 +239,7 @@ function! s:ShowHelp() abort
         \ '  <Space>q     quit with prompt',
         \ '  <Space>/     clear search highlight',
         \ '  <Space>l     toggle whitespace markers',
+        \ '  <Space>rn    toggle relative line numbers',
         \ '  <Space>z     toggle wrap',
         \ '',
         \ 'Sessions',
@@ -274,6 +275,7 @@ nnoremap <leader>bp :bprev<CR>
 nnoremap <leader>bd :bdelete<CR>
 
 nnoremap <leader><leader> <C-^>
+nnoremap <leader>rn :set relativenumber!<CR>
 
 " ----------------------------------------------------------
 " Window navigation
@@ -382,22 +384,6 @@ function! s:ProjectGrepWord() abort
     call s:ProjectGrep('\<' . escape(l:word, '\.*$^~[]') . '\>', l:glob)
 endfunction
 
-function! s:PickBuffer() abort
-    ls
-    let l:target = input('Buffer number/name: ')
-    if empty(l:target)
-        echo 'Buffer switch cancelled'
-        return
-    endif
-    try
-        execute 'buffer ' . fnameescape(l:target)
-    catch
-        echohl ErrorMsg
-        echom v:exception
-        echohl None
-    endtry
-endfunction
-
 function! s:OpenRecentFile() abort
     if empty(v:oldfiles)
         echo 'No recent files'
@@ -444,8 +430,6 @@ nnoremap [q :call <SID>QuickfixStep(-1)<CR>
 
 nnoremap <leader>co :copen<CR>
 nnoremap <leader>cc :cclose<CR>
-
-nnoremap <leader>fb :call <SID>PickBuffer()<CR>
 
 " ----------------------------------------------------------
 " Movement improvements

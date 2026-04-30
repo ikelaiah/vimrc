@@ -44,8 +44,9 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Prompted project search using `vimgrep` with file-glob scoping
 - [x] Search word under cursor across the project
 - [x] In-editor shortcut cheatsheet
-- [x] Recent-file and buffer pickers
+- [x] Recent-file picker
 - [x] Toggleable whitespace visibility (tabs, trailing spaces, nbsp)
+- [x] Toggleable relative line numbers, off by default
 - [x] Brief yank highlighting using built-in Vim match/timer support
 - [x] Language-aware indentation (consistent tabstop/shiftwidth/softtabstop per filetype)
 - [x] Count-aware `j`/`k` motion (works with `5j`, `10k`, etc.)
@@ -70,7 +71,7 @@ Example editing experience using this configuration.
 
 Editing Python with:
 
-- relative line numbers
+- absolute line numbers, with relative line numbers available on demand
 - cursor line highlight
 - toggleable whitespace markers
 - color column at 100
@@ -231,10 +232,11 @@ Example:
 
 | Action          | Shortcut   |
 | --------------- | ---------- |
-| Choose buffer   | `Space fb` |
 | Next buffer     | `Space bn` |
 | Previous buffer | `Space bp` |
 | Close buffer    | `Space bd` |
+
+Use Vim's built-in `:ls` and `:b {number-or-name}` for direct buffer selection.
 
 ---
 
@@ -337,6 +339,12 @@ Toggle wrap:
 
 ```text
 Space z
+```
+
+Toggle relative line numbers:
+
+```text
+Space rn
 ```
 
 Whitespace markers are off by default. Toggle them when you need to inspect tabs, trailing spaces, or non-breaking spaces:

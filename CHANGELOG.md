@@ -17,6 +17,7 @@ All notable changes to this project are documented here.
 - Truecolor is now enabled with a guarded `silent! set termguicolors` path so non-truecolor environments continue startup.
 - Encoding is set to UTF-8 early so list characters load correctly in Git Bash Vim.
 - The `Space e` file explorer mapping now silently toggles an existing netrw sidebar from any buffer.
+- Relative line numbers are now off by default and toggle with `Space rn`.
 - Session save and restore now report real failures instead of silently claiming success.
 - Project grep now rejects file globs containing command separators or control characters.
 - README now documents the versioned baseline, runtime directory fallback behavior, and the new editing safeguards.
@@ -25,3 +26,4 @@ All notable changes to this project are documented here.
 
 - Removed `set lazyredraw`; modern Vim redraw behavior is more reliable without it.
 - Removed the legacy `F2` paste-mode toggle.
+- Removed the custom `Space fb` buffer picker; use Vim's built-in `:ls` and `:b` instead.
