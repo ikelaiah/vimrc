@@ -24,6 +24,32 @@ Current release: **1.0.0**. See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
+## Start Here
+
+1. Install stock Vim or use the Vim already available on your workstation.
+2. Put this repository's `.vimrc` at the normal Vim config path for your OS.
+3. Open Vim and run `:CorporateSafeHealth` to confirm the runtime directories, mappings, and policy-related settings.
+
+For quick install commands, see [Quick Install](#quick-install).
+
+---
+
+## Who This Is For
+
+This configuration is for developers who need a practical Vim setup on machines where editor plugins, package managers, language runtimes, and helper binaries are restricted or require approval.
+
+It is also useful when you want a portable fallback editor that keeps common developer workflows available with stock Vim features only.
+
+---
+
+## What This Is Not
+
+This is not a plugin distribution, a plugin manager setup, an IDE replacement, or a formal security baseline.
+
+It does not claim company approval or certification. It documents its local file footprint so you can compare it with your own workplace requirements.
+
+---
+
 ## What Corporate-Safe Means Here
 
 In this repository, **corporate-safe** means a deliberately small approval footprint:
