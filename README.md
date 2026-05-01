@@ -16,7 +16,7 @@
 
 A **pure Vim configuration designed for restricted corporate environments**.
 
-No additional Vim plugins. No package managers. No Python / Node / ripgrep / ctags calls. No external binaries required.
+No additional Vim plugins. No plugin manager. No Python / Node / ripgrep / ctags calls. No external binaries required.
 
 Just **stock Vim features used effectively**.
 
@@ -26,9 +26,15 @@ Current release: **1.0.0**. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What Corporate-Safe Means Here
 
-In this repository, **corporate-safe** means the configuration is designed to run on stock Vim without extra Vim plugins or command-line dependencies that usually need approval on locked-down workstations.
+In this repository, **corporate-safe** means a deliberately small approval footprint:
 
-It does **not** claim formal security certification, company policy approval, or a zero local data footprint. Vim still creates local backup, undo, swap, and session files for recovery and workflow continuity; those files are documented below.
+- no Vim plugins
+- no plugin manager
+- no package-managed dependencies
+- no Python, Node, ripgrep, ctags, or other external helper tools
+- stock Vim features only
+
+It does **not** claim formal security certification, company policy approval, or a zero local data footprint. Vim can still create local recovery and history files; those files are documented below.
 
 ---
 
@@ -58,6 +64,7 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Hidden buffers for easier switching between unsaved files
 - [x] Smarter built-in completion and command-line matching
 - [x] Centralized backup, undo, swap, and session files when Vim can create the runtime directories
+- [x] Minimal local-state mode for sensitive folders
 - [x] Auto-reload files changed outside Vim
 - [x] Per-project auto-save and restore sessions (terminal buffers excluded)
 - [x] Auto-session opt-out through `g:corporate_safe_auto_sessions`
@@ -65,7 +72,7 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Safer truecolor probing for terminals that expose the option but cannot enable it
 - [x] Safer prompted project search that rejects command separators in file globs
 - [x] Quickfix next/previous mappings with readable boundary errors
-- [x] CI smoke tests for sourcing, relative-number toggle, netrw toggle, sessions, and health output
+- [x] CI smoke tests for sourcing, relative-number toggle, netrw toggle, sessions, health output, and policy opt-outs
 
 Vim's built-in filetype detection handles many languages. This configuration only adds a small set of indentation defaults where they improve day-to-day editing.
 
@@ -119,7 +126,7 @@ Restart Vim after installing.
 
 ---
 
-## Runtime Files and Recovery
+## Policy Footprint and Recovery
 
 This configuration does not require plugins or external tools, but Vim still creates local recovery and history files. They are kept in central folders instead of being scattered through project directories.
 
@@ -129,10 +136,23 @@ This configuration does not require plugins or external tools, but Vim still cre
 | Undo      | `~/.vim/undo/` | `~/vimfiles/undo/` | Persistent undo history |
 | Swap      | `~/.vim/swap/` | `~/vimfiles/swap/` | Crash recovery for unsaved edits |
 | Sessions  | `~/.vim/sessions/` | `~/vimfiles/sessions/` | Per-project window and buffer layout |
+| Viminfo / oldfiles | Vim default under `$HOME` | Vim default under `%USERPROFILE%` | Command history, marks, registers, recent files |
 
 These files can contain source text. Treat those directories as part of your normal development footprint and clear them according to your company's retention rules.
 
 If Vim cannot create one of these directories, startup continues and Vim falls back to its default behavior for the affected feature. Sessions are disabled until the session directory is available.
+
+### Minimal Local-State Mode
+
+For sensitive folders, enable this before the runtime directory section runs:
+
+```vim
+let g:corporate_safe_no_local_state = 1
+```
+
+This disables Vim-managed backup, write-backup, swap, persistent undo, sessions, and viminfo/shada writes from this configuration. It also prevents this vimrc from creating `~/.vim/` or `~/vimfiles/` runtime directories.
+
+This mode does not stop files you explicitly write with `:write`, and it cannot control operating-system, terminal, shell, or external editor logging.
 
 ---
 
@@ -311,6 +331,8 @@ Auto sessions are enabled by default to keep folder opens feeling like VS Code. 
 let g:corporate_safe_auto_sessions = 0
 ```
 
+Auto sessions are also disabled when `g:corporate_safe_no_local_state = 1`.
+
 **Terminal safety:** Auto-save wipes terminal buffers before the session file is written, so a broken `:terminal` can never poison the saved project session. Manual `Space ss` refuses to save while terminal buffers are open; quit Vim normally instead and the auto-save path will strip them safely.
 
 **Safe restore:** The following buffer types are automatically discarded on restore:
@@ -396,7 +418,7 @@ Open a stock-Vim health report:
 :CorporateSafeHealth
 ```
 
-The report shows the config version, Vim version, plugin/external-tool requirements, feature support, runtime directory status, project/session paths, netrw availability, auto-session state, session save/restore status, deep-find settings, default search glob, and key mappings.
+The report shows the config version, Vim version, plugin/external-tool requirements, feature support, runtime directory status, local-state mode, project/session paths, netrw availability, auto-session state, session save/restore status, deep-find settings, default search glob, and key mappings.
 
 ---
 
@@ -420,7 +442,7 @@ Navigation should be faster than thinking.
 
 ## CI Smoke Test
 
-The GitHub Actions workflow runs `.vimrc` with Vim in Ex mode and isolated `HOME` directories. It catches syntax errors, runtime directory regressions, line-ending regressions, relative-number toggle regressions, netrw sidebar toggle regressions, session save/restore regressions, and health-report regressions without installing runtime plugins.
+The GitHub Actions workflow runs `.vimrc` with Vim in Ex mode and isolated `HOME` directories. It catches syntax errors, runtime directory regressions, line-ending regressions, relative-number toggle regressions, netrw sidebar toggle regressions, session save/restore regressions, health-report regressions, and opt-out regressions without installing runtime plugins.
 
 ---
 

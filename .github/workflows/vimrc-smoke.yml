@@ -87,7 +87,10 @@ jobs:
           if search('External tools required: no', 'n') == 0
             cquit
           endif
-          if search('Auto sessions: yes', 'n') == 0
+          if search('Auto sessions requested: yes', 'n') == 0
+            cquit
+          endif
+          if search('Auto sessions effective: yes', 'n') == 0
             cquit
           endif
           if search('Deep :find path: yes', 'n') == 0
@@ -102,7 +105,47 @@ jobs:
           bwipeout!
           let g:corporate_safe_auto_sessions = 0
           CorporateSafeHealth
-          if search('Auto sessions: no', 'n') == 0
+          if search('Auto sessions requested: no', 'n') == 0
+            cquit
+          endif
+          if search('Auto sessions effective: no', 'n') == 0
+            cquit
+          endif
+          autocmd! Session
+          qa!
+          VIM
+
+          cat > build-temp/check-optouts.vim <<'VIM'
+          set nomore
+          CorporateSafeHealth
+          if search('Auto sessions requested: no', 'n') == 0
+            cquit
+          endif
+          if search('Auto sessions effective: no', 'n') == 0
+            cquit
+          endif
+          if search('Deep :find path: no', 'n') == 0
+            cquit
+          endif
+          if search('Default search glob: src/\*\*/\*', 'n') == 0
+            cquit
+          endif
+          if search('Local state writes: disabled', 'n') == 0
+            cquit
+          endif
+          if search('Vim info file: disabled', 'n') == 0
+            cquit
+          endif
+          if &backup || &writebackup || &swapfile || &undofile
+            cquit
+          endif
+          if exists('&viminfo') && !empty(&viminfo)
+            cquit
+          endif
+          if exists('&shada') && !empty(&shada)
+            cquit
+          endif
+          if isdirectory(expand('~/.vim')) || isdirectory(expand('~/vimfiles'))
             cquit
           endif
           autocmd! Session
@@ -132,3 +175,14 @@ jobs:
           HOME="$PWD/build-temp/vim-health-test" \
             vim -Nu "$PWD/.vimrc" -n -es -i NONE \
               -S build-temp/check-health.vim
+
+      - name: Check policy opt-outs
+        run: |
+          HOME="$PWD/build-temp/vim-optout-test" \
+            vim \
+              --cmd "let g:corporate_safe_auto_sessions = 0" \
+              --cmd "let g:corporate_safe_deep_find = 0" \
+              --cmd "let g:corporate_safe_search_glob = 'src/**/*'" \
+              --cmd "let g:corporate_safe_no_local_state = 1" \
+              -Nu "$PWD/.vimrc" -n -es -i NONE \
+              -S build-temp/check-optouts.vim

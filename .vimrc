@@ -12,6 +12,7 @@ let g:corporate_safe_vim_version = '1.0.0'
 let g:corporate_safe_auto_sessions = get(g:, 'corporate_safe_auto_sessions', 1)
 let g:corporate_safe_deep_find = get(g:, 'corporate_safe_deep_find', 1)
 let g:corporate_safe_search_glob = get(g:, 'corporate_safe_search_glob', '**/*')
+let g:corporate_safe_no_local_state = get(g:, 'corporate_safe_no_local_state', 0)
 filetype plugin indent on
 syntax on
 
@@ -54,10 +55,17 @@ else
     let s:state_root = $HOME . '/.vim'
 endif
 
-let s:backup_dir = s:EnsureDir(s:state_root . '/backup')
-let s:undo_dir = s:EnsureDir(s:state_root . '/undo')
-let s:swap_dir = s:EnsureDir(s:state_root . '/swap')
-let s:session_dir = s:EnsureDir(s:state_root . '/sessions')
+if get(g:, 'corporate_safe_no_local_state', 0)
+    let s:backup_dir = ''
+    let s:undo_dir = ''
+    let s:swap_dir = ''
+    let s:session_dir = ''
+else
+    let s:backup_dir = s:EnsureDir(s:state_root . '/backup')
+    let s:undo_dir = s:EnsureDir(s:state_root . '/undo')
+    let s:swap_dir = s:EnsureDir(s:state_root . '/swap')
+    let s:session_dir = s:EnsureDir(s:state_root . '/sessions')
+endif
 
 " ----------------------------------------------------------
 " Truecolor if supported
@@ -188,11 +196,25 @@ endif
 " ----------------------------------------------------------
 " Backup safety
 " ----------------------------------------------------------
-set backup
-set writebackup
-set swapfile
-set undofile
 set diffopt+=vertical
+
+if get(g:, 'corporate_safe_no_local_state', 0)
+    set nobackup
+    set nowritebackup
+    set noswapfile
+    set noundofile
+    if exists('&viminfo')
+        set viminfo=
+    endif
+    if exists('&shada')
+        set shada=
+    endif
+else
+    set backup
+    set writebackup
+    set swapfile
+    set undofile
+endif
 
 set autoread
 augroup AutoRead
@@ -200,14 +222,23 @@ augroup AutoRead
     autocmd FocusGained,BufEnter * checktime
 augroup END
 
-if !empty(s:backup_dir)
-    let &backupdir = s:backup_dir . '//'
-endif
-if !empty(s:swap_dir)
-    let &directory = s:swap_dir . '//'
-endif
-if !empty(s:undo_dir)
-    let &undodir = s:undo_dir . '//'
+augroup NoLocalState
+    autocmd!
+    if get(g:, 'corporate_safe_no_local_state', 0)
+        autocmd BufNewFile,BufRead,BufEnter * setlocal noswapfile
+    endif
+augroup END
+
+if !get(g:, 'corporate_safe_no_local_state', 0)
+    if !empty(s:backup_dir)
+        let &backupdir = s:backup_dir . '//'
+    endif
+    if !empty(s:swap_dir)
+        let &directory = s:swap_dir . '//'
+    endif
+    if !empty(s:undo_dir)
+        let &undodir = s:undo_dir . '//'
+    endif
 endif
 
 " ----------------------------------------------------------
@@ -278,9 +309,23 @@ endfunction
 
 function! s:PathStatus(path) abort
     if empty(a:path)
-        return 'unavailable'
+        return get(g:, 'corporate_safe_no_local_state', 0) ? 'disabled' : 'unavailable'
     endif
     return fnamemodify(a:path, ':~') . ' [' . (isdirectory(a:path) ? 'ok' : 'missing') . ']'
+endfunction
+
+function! s:LocalStateStatus() abort
+    return get(g:, 'corporate_safe_no_local_state', 0) ? 'disabled' : 'enabled'
+endfunction
+
+function! s:VimInfoStatus() abort
+    if exists('&viminfo')
+        return empty(&viminfo) ? 'disabled' : 'enabled'
+    endif
+    if exists('&shada')
+        return empty(&shada) ? 'disabled' : 'enabled'
+    endif
+    return 'unavailable'
 endfunction
 
 function! s:OptionStatus(option, value) abort
@@ -381,6 +426,8 @@ function! s:ShowHealth() abort
         \ '  SHA-256: ' . s:YesNo(exists('*sha256')),
         \ '  Deep :find path: ' . s:YesNo(get(g:, 'corporate_safe_deep_find', 1)),
         \ '  Default search glob: ' . get(g:, 'corporate_safe_search_glob', '**/*'),
+        \ '  Local state writes: ' . s:LocalStateStatus(),
+        \ '  Vim info file: ' . s:VimInfoStatus(),
         \ '',
         \ 'Runtime Directories',
         \ '  Backup: ' . s:PathStatus(s:backup_dir),
@@ -389,7 +436,8 @@ function! s:ShowHealth() abort
         \ '  Sessions: ' . s:PathStatus(s:session_dir),
         \ '',
         \ 'Project and Sessions',
-        \ '  Auto sessions: ' . s:YesNo(get(g:, 'corporate_safe_auto_sessions', 1)),
+        \ '  Auto sessions requested: ' . s:YesNo(get(g:, 'corporate_safe_auto_sessions', 1)),
+        \ '  Auto sessions effective: ' . s:YesNo(get(g:, 'corporate_safe_auto_sessions', 1) && !get(g:, 'corporate_safe_no_local_state', 0)),
         \ '  Auto session for current launch: ' . s:YesNo(s:ShouldAutoSession()),
         \ '  Project root: ' . fnamemodify(s:ProjectRoot(), ':~'),
         \ '  Startup root: ' . (empty(s:startup_root) ? 'not set yet' : fnamemodify(s:startup_root, ':~')),
@@ -692,6 +740,9 @@ let s:last_session_restore_status = 'not restored yet'
 " Auto-restore session when Vim starts with no file args, or with only a directory arg.
 " Auto-save session on exit in those same cases.
 function! s:ShouldAutoSession() abort
+    if get(g:, 'corporate_safe_no_local_state', 0)
+        return 0
+    endif
     if !get(g:, 'corporate_safe_auto_sessions', 1)
         return 0
     endif
@@ -826,6 +877,14 @@ function! s:CurrentSessionFile() abort
 endfunction
 
 function! s:SessionAvailable(show_messages) abort
+    if get(g:, 'corporate_safe_no_local_state', 0)
+        if a:show_messages
+            echohl WarningMsg
+            echom 'Sessions unavailable: local state writes are disabled.'
+            echohl None
+        endif
+        return 0
+    endif
     if !empty(s:session_dir) && isdirectory(s:session_dir)
         return 1
     endif
@@ -901,7 +960,7 @@ endfunction
 
 function! s:SaveCurrentSession(force_for_exit) abort
     if !s:SessionAvailable(!a:force_for_exit)
-        let s:last_session_save_status = 'unavailable: session directory missing'
+        let s:last_session_save_status = get(g:, 'corporate_safe_no_local_state', 0) ? 'disabled: no local state' : 'unavailable: session directory missing'
         return
     endif
     let l:session_file = s:CurrentSessionFile()
@@ -932,7 +991,7 @@ endfunction
 
 function! s:RestoreCurrentSession(show_messages) abort
     if !s:SessionAvailable(a:show_messages)
-        let s:last_session_restore_status = 'unavailable: session directory missing'
+        let s:last_session_restore_status = get(g:, 'corporate_safe_no_local_state', 0) ? 'disabled: no local state' : 'unavailable: session directory missing'
         return
     endif
     let l:session_file = s:CurrentSessionFile()

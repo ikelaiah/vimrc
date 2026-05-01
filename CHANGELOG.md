@@ -14,6 +14,7 @@ All notable changes to this project are documented here.
 - Added `:CorporateSafeHealth` for stock-Vim diagnostics on locked-down workstations.
 - Added `Space cd` to change the local working directory to the current file's directory.
 - Added guarded `Space y` and `Space p` system clipboard mappings when Vim has clipboard support.
+- Added `g:corporate_safe_no_local_state` for sensitive folders that should avoid Vim-managed backup, swap, undo, session, and viminfo/shada writes.
 - Added README badges for version and the GitHub Actions smoke test.
 
 ### Changed
@@ -26,11 +27,11 @@ All notable changes to this project are documented here.
 - Auto sessions remain enabled by default and can be disabled with `g:corporate_safe_auto_sessions = 0`.
 - Deep `:find` support can be disabled with `g:corporate_safe_deep_find = 0`.
 - Project search now uses configurable `g:corporate_safe_search_glob` as the default file glob.
-- Health output now includes all configured mappings, clearer session status, and search settings.
+- Health output now includes all configured mappings, clearer session status, local-state status, and search settings.
 - Comment continuation from normal-mode `o` is disabled through `formatoptions-=o`.
 - Session save and restore now report real failures instead of silently claiming success.
 - Project grep now rejects file globs containing command separators or control characters.
-- README now documents the versioned baseline, runtime directory fallback behavior, and the new editing safeguards.
+- README now documents the versioned baseline, policy footprint, runtime directory fallback behavior, and editing safeguards.
 
 ### Removed
 
