@@ -12,6 +12,8 @@ All notable changes to this project are documented here.
 - Added safer quickfix navigation wrappers for `]q` and `[q`.
 - Added CI smoke coverage for relative-number toggling, netrw sidebar toggling, and session save/restore.
 - Added `:CorporateSafeHealth` for stock-Vim diagnostics on locked-down workstations.
+- Added `Space cd` to change the local working directory to the current file's directory.
+- Added guarded `Space y` and `Space p` system clipboard mappings when Vim has clipboard support.
 - Added README badges for version and the GitHub Actions smoke test.
 
 ### Changed
@@ -22,6 +24,10 @@ All notable changes to this project are documented here.
 - The `Space e` file explorer mapping now silently toggles an existing netrw sidebar from any buffer.
 - Relative line numbers are now off by default and toggle with `Space rn`.
 - Auto sessions remain enabled by default and can be disabled with `g:corporate_safe_auto_sessions = 0`.
+- Deep `:find` support can be disabled with `g:corporate_safe_deep_find = 0`.
+- Project search now uses configurable `g:corporate_safe_search_glob` as the default file glob.
+- Health output now includes all configured mappings, clearer session status, and search settings.
+- Comment continuation from normal-mode `o` is disabled through `formatoptions-=o`.
 - Session save and restore now report real failures instead of silently claiming success.
 - Project grep now rejects file globs containing command separators or control characters.
 - README now documents the versioned baseline, runtime directory fallback behavior, and the new editing safeguards.

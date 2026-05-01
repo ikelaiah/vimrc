@@ -42,13 +42,17 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Early UTF-8 encoding setup for portable whitespace markers
 - [x] Sidebar file explorer that toggles cleanly from any buffer
 - [x] Prompted project search using `vimgrep` with file-glob scoping
+- [x] Configurable deep file search and default project-search glob
 - [x] Search word under cursor across the project
 - [x] In-editor shortcut cheatsheet
 - [x] In-editor health report for locked-down workstation debugging
 - [x] Recent-file picker
 - [x] Toggleable whitespace visibility (tabs, trailing spaces, nbsp)
 - [x] Toggleable relative line numbers, off by default
+- [x] File-local working directory shortcut
+- [x] Guarded system clipboard yank/paste mappings
 - [x] Brief yank highlighting using built-in Vim match/timer support
+- [x] No automatic comment continuation when opening a new line with `o`
 - [x] Language-aware indentation (consistent tabstop/shiftwidth/softtabstop per filetype)
 - [x] Count-aware `j`/`k` motion (works with `5j`, `10k`, etc.)
 - [x] Hidden buffers for easier switching between unsaved files
@@ -204,6 +208,7 @@ Space ?
 | Open recent file | `Space fr`    |
 | Sidebar explorer | `Space e`     |
 | Switch last file | `Space Space` |
+| Local cwd to current file directory | `Space cd` |
 
 ---
 
@@ -227,6 +232,18 @@ Example:
 `Space g` prompts for a search term and file glob, runs `vimgrep`, and opens the quickfix list automatically. Use `**/*` for everything, `**/*.py` for Python, or a narrower glob such as `app/**/*.js`.
 
 `Space fw` searches the word under the cursor and also prompts for the file glob.
+
+The default file glob is configurable:
+
+```vim
+let g:corporate_safe_search_glob = 'src/**/*'
+```
+
+Deep `:find` support is enabled by default through `set path+=**`. Disable it for very large repositories:
+
+```vim
+let g:corporate_safe_deep_find = 0
+```
 
 ---
 
@@ -365,6 +382,10 @@ Trailing whitespace markers are visible when whitespace markers are enabled, but
 
 Yanked text is briefly highlighted when the running Vim supports `TextYankPost`, `matchaddpos()`, and timers.
 
+When Vim has clipboard support, `Space y` yanks to the system clipboard and `Space p` pastes from it.
+
+Opening a new line with `o` does not automatically continue comment leaders.
+
 ---
 
 ## Diagnostics
@@ -375,7 +396,7 @@ Open a stock-Vim health report:
 :CorporateSafeHealth
 ```
 
-The report shows the config version, Vim version, plugin/external-tool requirements, feature support, runtime directory status, project/session paths, netrw availability, auto-session state, and key mappings.
+The report shows the config version, Vim version, plugin/external-tool requirements, feature support, runtime directory status, project/session paths, netrw availability, auto-session state, session save/restore status, deep-find settings, default search glob, and key mappings.
 
 ---
 

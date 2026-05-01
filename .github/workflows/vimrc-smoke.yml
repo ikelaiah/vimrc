@@ -90,6 +90,15 @@ jobs:
           if search('Auto sessions: yes', 'n') == 0
             cquit
           endif
+          if search('Deep :find path: yes', 'n') == 0
+            cquit
+          endif
+          if search('Default search glob: \*\*/\*', 'n') == 0
+            cquit
+          endif
+          if search('<Space>cd', 'n') == 0
+            cquit
+          endif
           bwipeout!
           let g:corporate_safe_auto_sessions = 0
           CorporateSafeHealth

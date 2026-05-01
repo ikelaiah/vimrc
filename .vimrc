@@ -10,6 +10,8 @@ if has('multi_byte')
 endif
 let g:corporate_safe_vim_version = '1.0.0'
 let g:corporate_safe_auto_sessions = get(g:, 'corporate_safe_auto_sessions', 1)
+let g:corporate_safe_deep_find = get(g:, 'corporate_safe_deep_find', 1)
+let g:corporate_safe_search_glob = get(g:, 'corporate_safe_search_glob', '**/*')
 filetype plugin indent on
 syntax on
 
@@ -141,9 +143,11 @@ set softtabstop=4
 
 set autoindent
 set nrformats-=octal
+set formatoptions-=o
 
 augroup FileTypeSettings
     autocmd!
+    autocmd FileType * setlocal formatoptions-=o
     autocmd FileType javascript,css,json,yaml,toml,lua setlocal tabstop=2 shiftwidth=2 softtabstop=2
     autocmd FileType markdown setlocal wrap linebreak colorcolumn=0
     autocmd FileType help setlocal colorcolumn=0 nolist
@@ -153,7 +157,9 @@ augroup END
 " ----------------------------------------------------------
 " Built-in project file search
 " ----------------------------------------------------------
-set path+=**
+if get(g:, 'corporate_safe_deep_find', 1)
+    set path+=**
+endif
 
 set wildignore+=*/node_modules/*
 set wildignore+=*/dist/*
@@ -173,6 +179,10 @@ set wildignore+=*/target/*
 " ----------------------------------------------------------
 if has("clipboard")
     set clipboard=unnamed,unnamedplus
+    nnoremap <leader>y "+y
+    vnoremap <leader>y "+y
+    nnoremap <leader>p "+p
+    vnoremap <leader>p "+p
 endif
 
 " ----------------------------------------------------------
@@ -216,6 +226,7 @@ function! s:ShowHelp() abort
         \ '  <Space>e     toggle project explorer',
         \ '  <Space>fr    open recent file',
         \ '  <Space><Space> switch to alternate file',
+        \ '  <Space>cd    local cwd to current file directory',
         \ '',
         \ 'Search',
         \ '  <Space>g     search project',
@@ -226,7 +237,6 @@ function! s:ShowHelp() abort
         \ '  <Space>cc    close quickfix',
         \ '',
         \ 'Buffers and Windows',
-        \ '  <Space>fb    choose buffer',
         \ '  <Space>bn/bp next / previous buffer',
         \ '  <Space>bd    close buffer',
         \ '  Ctrl-h/j/k/l move between splits',
@@ -242,6 +252,7 @@ function! s:ShowHelp() abort
         \ '  <Space>l     toggle whitespace markers',
         \ '  <Space>rn    toggle relative line numbers',
         \ '  <Space>z     toggle wrap',
+        \ '  <Space>y/p   system clipboard when supported',
         \ '',
         \ 'Sessions',
         \ '  <Space>ss    save session',
@@ -280,13 +291,77 @@ function! s:NetrwStatus() abort
     return exists(':Lexplore') == 2 ? 'available' : 'unavailable'
 endfunction
 
+function! s:ClipboardMappingStatus() abort
+    return has('clipboard') ? 'enabled' : 'unavailable'
+endfunction
+
+function! s:MappingLines() abort
+    let l:lines = [
+        \ '  <Space>?        help',
+        \ '  :CorporateSafeHealth health report',
+        \ '',
+        \ '  Files',
+        \ '    <Space>ff       find file in project path',
+        \ '    <Space>e        toggle netrw explorer',
+        \ '    <Space>fr       open recent file',
+        \ '    <Space><Space> switch to alternate file',
+        \ '    <Space>cd       change local cwd to current file directory',
+        \ '',
+        \ '  Search',
+        \ '    <Space>g        search project',
+        \ '    <Space>fw       search word under cursor',
+        \ '    ]q / [q         next / previous quickfix result',
+        \ '    <Space>co       open quickfix',
+        \ '    <Space>cc       close quickfix',
+        \ '',
+        \ '  Buffers and Windows',
+        \ '    <Space>bn/bp    next / previous buffer',
+        \ '    <Space>bd       close buffer',
+        \ '    Ctrl-h/j/k/l    move between splits',
+        \ '    <Space>-        horizontal split',
+        \ '    <Space>\        vertical split',
+        \ '    <Space>=        equalise windows',
+        \ '    <Space>c        close split',
+        \ '    <Space>o        keep only current split',
+        \ '    <Space>Arrows   resize splits',
+        \ '',
+        \ '  Editing',
+        \ '    <Space>w        save',
+        \ '    <Space>x        save and quit',
+        \ '    <Space>q        quit with prompt',
+        \ '    <Space>Q        force quit',
+        \ '    <Space>/        clear search highlight',
+        \ '    <Space>l        toggle whitespace markers',
+        \ '    <Space>rn       toggle relative line numbers',
+        \ '    <Space>z        toggle wrap',
+        \ '    j/k             move by display lines without a count',
+        \ '    Y               yank to end of line',
+        \ '    < / >           keep visual selection after indent',
+        \ '',
+        \ '  Sessions',
+        \ '    <Space>ss       save session',
+        \ '    <Space>sr       restore session',
+        \ '    <Space>sd       delete session',
+        \ '',
+        \ '  Vimrc',
+        \ '    <Space>ev       edit vimrc',
+        \ '    <Space>sv       source vimrc',
+        \ ]
+    if has('clipboard')
+        call extend(l:lines, [
+            \ '',
+            \ '  Clipboard',
+            \ '    <Space>y        yank to system clipboard',
+            \ '    <Space>p        paste from system clipboard',
+            \ ])
+    endif
+    return l:lines
+endfunction
+
 function! s:ShowHealth() abort
     let l:session_file = s:CurrentSessionFile()
     let l:vim_version = printf('%d.%02d', v:version / 100, v:version % 100)
-    botright new
-    setlocal buftype=nofile bufhidden=wipe noswapfile nobuflisted
-    file Corporate-Safe-Vim-Health
-    call setline(1, [
+    let l:lines = [
         \ 'Corporate-Safe Vim Health',
         \ '',
         \ 'Config',
@@ -297,12 +372,15 @@ function! s:ShowHealth() abort
         \ '',
         \ 'Features',
         \ '  Clipboard: ' . s:YesNo(has('clipboard')),
+        \ '  Clipboard mappings: ' . s:ClipboardMappingStatus(),
         \ '  Truecolor option: ' . s:YesNo(exists('&termguicolors')),
         \ '  Truecolor enabled: ' . s:OptionStatus('&termguicolors', exists('&termguicolors') && &termguicolors),
         \ '  Netrw Lexplore: ' . s:NetrwStatus(),
         \ '  TextYankPost: ' . s:YesNo(exists('##TextYankPost')),
         \ '  Timers: ' . s:YesNo(exists('*timer_start')),
         \ '  SHA-256: ' . s:YesNo(exists('*sha256')),
+        \ '  Deep :find path: ' . s:YesNo(get(g:, 'corporate_safe_deep_find', 1)),
+        \ '  Default search glob: ' . get(g:, 'corporate_safe_search_glob', '**/*'),
         \ '',
         \ 'Runtime Directories',
         \ '  Backup: ' . s:PathStatus(s:backup_dir),
@@ -314,20 +392,25 @@ function! s:ShowHealth() abort
         \ '  Auto sessions: ' . s:YesNo(get(g:, 'corporate_safe_auto_sessions', 1)),
         \ '  Auto session for current launch: ' . s:YesNo(s:ShouldAutoSession()),
         \ '  Project root: ' . fnamemodify(s:ProjectRoot(), ':~'),
+        \ '  Startup root: ' . (empty(s:startup_root) ? 'not set yet' : fnamemodify(s:startup_root, ':~')),
+        \ '  Auto session root: ' . (empty(s:auto_session_root) ? 'not active' : fnamemodify(s:auto_session_root, ':~')),
         \ '  Current session root: ' . fnamemodify(s:CurrentSessionRoot(), ':~'),
         \ '  Current session file: ' . (empty(l:session_file) ? 'unavailable' : fnamemodify(l:session_file, ':~')),
         \ '  Session file exists: ' . s:YesNo(!empty(l:session_file) && filereadable(l:session_file)),
+        \ '  Last session save: ' . s:last_session_save_status,
+        \ '  Last session restore: ' . s:last_session_restore_status,
         \ '',
         \ 'Mappings',
-        \ '  <Space>?   help',
-        \ '  <Space>e   toggle netrw explorer',
-        \ '  <Space>rn  toggle relative line numbers',
-        \ '  <Space>ss  save session',
-        \ '  <Space>sr  restore session',
-        \ '  <Space>sd  delete session',
+        \ ]
+    call extend(l:lines, s:MappingLines())
+    call extend(l:lines, [
         \ '',
         \ 'Press q to close this health report.'
         \ ])
+    botright new
+    setlocal buftype=nofile bufhidden=wipe noswapfile nobuflisted
+    file Corporate-Safe-Vim-Health
+    call setline(1, l:lines)
     nnoremap <buffer> q :close<CR>
     setlocal nomodifiable nomodified
 endfunction
@@ -352,6 +435,18 @@ nnoremap <leader>bd :bdelete<CR>
 
 nnoremap <leader><leader> <C-^>
 nnoremap <leader>rn :set relativenumber!<CR>
+
+function! s:ChangeToFileDir() abort
+    let l:dir = expand('%:p:h')
+    if empty(l:dir) || !isdirectory(l:dir)
+        echo 'No file directory for current buffer'
+        return
+    endif
+    execute 'lcd ' . fnameescape(l:dir)
+    pwd
+endfunction
+
+nnoremap <leader>cd :call <SID>ChangeToFileDir()<CR>
 
 " ----------------------------------------------------------
 " Window navigation
@@ -413,7 +508,7 @@ function! s:ProjectGrep(pattern, glob) abort
         echo 'Project search cancelled'
         return
     endif
-    let l:glob = empty(a:glob) ? '**/*' : a:glob
+    let l:glob = empty(a:glob) ? get(g:, 'corporate_safe_search_glob', '**/*') : a:glob
     if l:glob =~# '[|[:cntrl:]]'
         echohl ErrorMsg
         echom 'Unsafe file glob. Avoid command separators and control characters.'
@@ -446,7 +541,7 @@ function! s:PromptProjectGrep() abort
         call s:ProjectGrep('', '')
         return
     endif
-    let l:glob = input('File glob: ', '**/*')
+    let l:glob = input('File glob: ', get(g:, 'corporate_safe_search_glob', '**/*'))
     call s:ProjectGrep(l:pattern, l:glob)
 endfunction
 
@@ -456,7 +551,7 @@ function! s:ProjectGrepWord() abort
         echo 'No word under cursor'
         return
     endif
-    let l:glob = input('File glob: ', '**/*')
+    let l:glob = input('File glob: ', get(g:, 'corporate_safe_search_glob', '**/*'))
     call s:ProjectGrep('\<' . escape(l:word, '\.*$^~[]') . '\>', l:glob)
 endfunction
 
@@ -591,6 +686,8 @@ set sessionoptions=buffers,curdir,folds,tabpages,winsize,winpos
 
 let s:auto_session_root = ''
 let s:startup_root = ''
+let s:last_session_save_status = 'not saved yet'
+let s:last_session_restore_status = 'not restored yet'
 
 " Auto-restore session when Vim starts with no file args, or with only a directory arg.
 " Auto-save session on exit in those same cases.
@@ -804,6 +901,7 @@ endfunction
 
 function! s:SaveCurrentSession(force_for_exit) abort
     if !s:SessionAvailable(!a:force_for_exit)
+        let s:last_session_save_status = 'unavailable: session directory missing'
         return
     endif
     let l:session_file = s:CurrentSessionFile()
@@ -813,6 +911,7 @@ function! s:SaveCurrentSession(force_for_exit) abort
         echohl WarningMsg
         echom 'Session not saved: close terminal buffers first, or quit Vim and auto-save will skip them.'
         echohl None
+        let s:last_session_save_status = 'skipped: terminal buffers open'
         return
     endif
     try
@@ -821,9 +920,11 @@ function! s:SaveCurrentSession(force_for_exit) abort
         echohl ErrorMsg
         echom 'Session save failed: ' . v:exception
         echohl None
+        let s:last_session_save_status = 'failed: ' . v:exception
         return
     endtry
     let v:this_session = l:session_file
+    let s:last_session_save_status = 'saved: ' . fnamemodify(l:session_file, ':~')
     if !a:force_for_exit
         echom 'Session saved: ' . fnamemodify(s:CurrentSessionRoot(), ':~')
     endif
@@ -831,6 +932,7 @@ endfunction
 
 function! s:RestoreCurrentSession(show_messages) abort
     if !s:SessionAvailable(a:show_messages)
+        let s:last_session_restore_status = 'unavailable: session directory missing'
         return
     endif
     let l:session_file = s:CurrentSessionFile()
@@ -839,6 +941,7 @@ function! s:RestoreCurrentSession(show_messages) abort
         if a:show_messages
             echom 'No session saved for: ' . fnamemodify(s:CurrentSessionRoot(), ':~')
         endif
+        let s:last_session_restore_status = 'not found: ' . fnamemodify(l:session_file, ':~')
         return
     endif
     try
@@ -847,10 +950,12 @@ function! s:RestoreCurrentSession(show_messages) abort
         echohl ErrorMsg
         echom 'Session restore failed: ' . v:exception
         echohl None
+        let s:last_session_restore_status = 'failed: ' . v:exception
         return
     endtry
     call s:CleanMissingBuffers()
     let v:this_session = l:session_file
+    let s:last_session_restore_status = 'restored: ' . fnamemodify(l:session_file, ':~')
     if a:show_messages
         echom 'Session restored: ' . fnamemodify(s:CurrentSessionRoot(), ':~')
     endif
