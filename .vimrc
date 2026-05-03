@@ -8,7 +8,7 @@ if has('multi_byte')
     set encoding=utf-8
     set fileencodings=utf-8,default,latin1
 endif
-let g:corporate_safe_vim_version = '1.0.0'
+let g:corporate_safe_vim_version = '1.1.0'
 let g:corporate_safe_auto_sessions = get(g:, 'corporate_safe_auto_sessions', 1)
 let g:corporate_safe_deep_find = get(g:, 'corporate_safe_deep_find', 1)
 let g:corporate_safe_search_glob = get(g:, 'corporate_safe_search_glob', '**/*')
@@ -267,6 +267,20 @@ function! s:ShowHelp() abort
         \ '  <Space>co    open quickfix',
         \ '  <Space>cc    close quickfix',
         \ '',
+        \ 'Git (optional, uses installed git only when invoked)',
+        \ '  <Space>Gs    git status',
+        \ '  <Space>Gq    changed files in quickfix',
+        \ '  <Space>Gd    diff current file',
+        \ '  <Space>Gl    recent log',
+        \ '  <Space>Gb    blame current file',
+        \ '  <Space>Ga    stage current file',
+        \ '  <Space>GA    stage all changes',
+        \ '  <Space>Gc    commit staged changes with message prompt',
+        \ '  <Space>Gp    push',
+        \ '  <Space>GP    pull --ff-only',
+        \ '  <Space>Gr    restore current file with confirmation',
+        \ '  <Space>Gg    run a git command',
+        \ '',
         \ 'Buffers and Windows',
         \ '  <Space>bn/bp next / previous buffer',
         \ '  <Space>bd    close buffer',
@@ -359,6 +373,20 @@ function! s:MappingLines() abort
         \ '    <Space>co       open quickfix',
         \ '    <Space>cc       close quickfix',
         \ '',
+        \ '  Git',
+        \ '    <Space>Gs       git status',
+        \ '    <Space>Gq       changed files in quickfix',
+        \ '    <Space>Gd       diff current file',
+        \ '    <Space>Gl       recent log',
+        \ '    <Space>Gb       blame current file',
+        \ '    <Space>Ga       stage current file',
+        \ '    <Space>GA       stage all changes',
+        \ '    <Space>Gc       commit staged changes with message prompt',
+        \ '    <Space>Gp       push',
+        \ '    <Space>GP       pull --ff-only',
+        \ '    <Space>Gr       restore current file with confirmation',
+        \ '    <Space>Gg       run a git command',
+        \ '',
         \ '  Buffers and Windows',
         \ '    <Space>bn/bp    next / previous buffer',
         \ '    <Space>bd       close buffer',
@@ -418,6 +446,8 @@ function! s:ShowHealth() abort
         \ 'Features',
         \ '  Clipboard: ' . s:YesNo(has('clipboard')),
         \ '  Clipboard mappings: ' . s:ClipboardMappingStatus(),
+        \ '  Git executable (optional): ' . s:GitExecutableStatus(),
+        \ '  Git repository: ' . s:GitRootStatus(),
         \ '  Truecolor option: ' . s:YesNo(exists('&termguicolors')),
         \ '  Truecolor enabled: ' . s:OptionStatus('&termguicolors', exists('&termguicolors') && &termguicolors),
         \ '  Netrw Lexplore: ' . s:NetrwStatus(),
@@ -649,6 +679,304 @@ nnoremap [q :call <SID>QuickfixStep(-1)<CR>
 
 nnoremap <leader>co :copen<CR>
 nnoremap <leader>cc :cclose<CR>
+
+" ----------------------------------------------------------
+" Git workflow (optional, stock Vim wrapper around git)
+" ----------------------------------------------------------
+function! s:SystemList(command) abort
+    if exists('*systemlist')
+        return systemlist(a:command)
+    endif
+    return split(system(a:command), "\n")
+endfunction
+
+function! s:GitExecutableStatus() abort
+    return executable('git') ? 'available' : 'unavailable'
+endfunction
+
+function! s:GitAvailable(show_message) abort
+    if executable('git')
+        return 1
+    endif
+    if a:show_message
+        echohl WarningMsg
+        echom 'Git is unavailable: no git executable found in PATH.'
+        echohl None
+    endif
+    return 0
+endfunction
+
+function! s:GitWorkingDir() abort
+    let l:dir = expand('%:p:h')
+    if empty(l:dir) || !isdirectory(l:dir)
+        let l:dir = getcwd()
+    endif
+    return l:dir
+endfunction
+
+function! s:GitRoot() abort
+    if !s:GitAvailable(0)
+        return ''
+    endif
+    let l:dir = s:GitWorkingDir()
+    let l:cmd = 'git -C ' . shellescape(l:dir) . ' rev-parse --show-toplevel'
+    let l:lines = s:SystemList(l:cmd)
+    if v:shell_error != 0 || empty(l:lines)
+        return ''
+    endif
+    for l:line in reverse(copy(l:lines))
+        if !empty(l:line) && l:line !~# '^warning:'
+            return s:NormalizePath(l:line)
+        endif
+    endfor
+    return ''
+endfunction
+
+function! s:GitRootStatus() abort
+    if !s:GitAvailable(0)
+        return 'unavailable'
+    endif
+    let l:root = s:GitRoot()
+    return empty(l:root) ? 'not inside a git repo' : fnamemodify(l:root, ':~')
+endfunction
+
+function! s:GitRequireRoot() abort
+    let l:root = s:GitRoot()
+    if !empty(l:root)
+        return l:root
+    endif
+    if s:GitAvailable(1)
+        echohl WarningMsg
+        echom 'Git repository not detected for the current buffer or working directory.'
+        echohl None
+    endif
+    return ''
+endfunction
+
+function! s:GitOutputBufferName(title) abort
+    return 'Corporate-Safe-Git-' . substitute(a:title, '[^A-Za-z0-9._-]', '-', 'g')
+endfunction
+
+function! s:ShowOutputBuffer(name, lines) abort
+    botright new
+    setlocal buftype=nofile bufhidden=wipe noswapfile nobuflisted
+    execute 'file ' . fnameescape(a:name)
+    call setline(1, empty(a:lines) ? ['(no output)'] : a:lines)
+    nnoremap <buffer> q :close<CR>
+    setlocal nomodifiable nomodified readonly
+    normal! gg
+endfunction
+
+function! s:GitOutput(args, title) abort
+    let l:root = s:GitRequireRoot()
+    if empty(l:root)
+        return 0
+    endif
+    let l:args = empty(a:args) ? 'status --short --branch' : a:args
+    if l:args =~# '[[:cntrl:]]'
+        echohl ErrorMsg
+        echom 'Unsafe git arguments: control characters are not allowed.'
+        echohl None
+        return 0
+    endif
+
+    let l:cmd = 'git -C ' . shellescape(l:root) . ' -c color.ui=false --no-pager ' . l:args
+    let l:lines = s:SystemList(l:cmd)
+    let l:exit = v:shell_error
+    if empty(l:lines)
+        let l:lines = [l:exit == 0 ? 'Done.' : '(no output)']
+    endif
+    call s:ShowOutputBuffer(s:GitOutputBufferName(a:title), [
+        \ '$ ' . l:cmd,
+        \ 'Repository: ' . fnamemodify(l:root, ':~'),
+        \ 'Exit: ' . l:exit,
+        \ '',
+        \ ] + l:lines)
+    return l:exit == 0
+endfunction
+
+function! s:GitShell(args) abort
+    let l:root = s:GitRequireRoot()
+    if empty(l:root)
+        return
+    endif
+    execute '!git -C ' . shellescape(l:root) . ' ' . a:args
+endfunction
+
+function! s:GitPathWithSlashes(path) abort
+    let l:path = fnamemodify(a:path, ':p')
+    if exists('*resolve')
+        let l:path = resolve(l:path)
+    endif
+    let l:path = simplify(l:path)
+    let l:path = substitute(l:path, '\\', '/', 'g')
+    if l:path !~# '^\a:/$' && l:path !=# '/'
+        let l:path = substitute(l:path, '/\+$', '', '')
+    endif
+    return l:path
+endfunction
+
+function! s:GitRelativeFile() abort
+    let l:file = expand('%:p')
+    if empty(l:file)
+        echo 'No file path for current buffer'
+        return ''
+    endif
+    let l:root = s:GitRequireRoot()
+    if empty(l:root)
+        return ''
+    endif
+
+    let l:file_path = s:GitPathWithSlashes(l:file)
+    let l:root_path = s:GitPathWithSlashes(l:root)
+    let l:file_cmp = (has('win32') || has('win64')) ? tolower(l:file_path) : l:file_path
+    let l:root_cmp = (has('win32') || has('win64')) ? tolower(l:root_path) : l:root_path
+    if stridx(l:file_cmp, l:root_cmp . '/') != 0
+        echohl WarningMsg
+        echom 'Current file is outside the git repository root.'
+        echohl None
+        return ''
+    endif
+    return strpart(l:file_path, strlen(l:root_path) + 1)
+endfunction
+
+function! s:GitStatus() abort
+    call s:GitOutput('status --short --branch', 'Status')
+endfunction
+
+function! s:GitChangedFiles() abort
+    let l:root = s:GitRequireRoot()
+    if empty(l:root)
+        return
+    endif
+    let l:cmd = 'git -C ' . shellescape(l:root) . ' -c color.ui=false -c core.quotePath=false status --porcelain'
+    let l:lines = s:SystemList(l:cmd)
+    if v:shell_error != 0
+        call s:GitOutput('status --short --branch', 'Status')
+        return
+    endif
+
+    let l:items = []
+    for l:line in l:lines
+        if len(l:line) < 4 || l:line =~# '^warning:'
+            continue
+        endif
+        let l:path = strpart(l:line, 3)
+        if l:path =~# ' -> '
+            let l:path = matchstr(l:path, ' -> \zs.*')
+        endif
+        if empty(l:path)
+            continue
+        endif
+        call add(l:items, {
+            \ 'filename': l:root . '/' . l:path,
+            \ 'lnum': 1,
+            \ 'col': 1,
+            \ 'text': l:line[0:1] . ' ' . l:path,
+            \ })
+    endfor
+
+    call setqflist(l:items, 'r')
+    if empty(l:items)
+        cclose
+        echom 'No changed git files.'
+        return
+    endif
+    copen
+endfunction
+
+function! s:GitDiffFile() abort
+    let l:file = s:GitRelativeFile()
+    if empty(l:file)
+        return
+    endif
+    call s:GitOutput('diff -- ' . shellescape(l:file), 'Diff')
+endfunction
+
+function! s:GitLog() abort
+    call s:GitOutput('log --oneline --decorate --graph -30', 'Log')
+endfunction
+
+function! s:GitBlameFile() abort
+    let l:file = s:GitRelativeFile()
+    if empty(l:file)
+        return
+    endif
+    call s:GitOutput('blame --date=short -- ' . shellescape(l:file), 'Blame')
+endfunction
+
+function! s:GitStageFile() abort
+    let l:file = s:GitRelativeFile()
+    if empty(l:file)
+        return
+    endif
+    call s:GitOutput('add -- ' . shellescape(l:file), 'Stage-File')
+endfunction
+
+function! s:GitStageAll() abort
+    call s:GitOutput('add -A', 'Stage-All')
+endfunction
+
+function! s:GitCommitPrompt() abort
+    let l:message = input('Commit message: ')
+    if empty(l:message)
+        echo 'Commit cancelled'
+        return
+    endif
+    call s:GitOutput('commit -m ' . shellescape(l:message), 'Commit')
+endfunction
+
+function! s:GitRestoreFile() abort
+    let l:file = s:GitRelativeFile()
+    if empty(l:file)
+        return
+    endif
+    if confirm('Restore current file from HEAD?', "&Restore\n&Cancel", 2) != 1
+        echo 'Restore cancelled'
+        return
+    endif
+    call s:GitOutput('restore -- ' . shellescape(l:file), 'Restore-File')
+    checktime
+endfunction
+
+function! s:GitUserArgsSafe(args) abort
+    return a:args !~# '[|;&<>`]' && a:args !~# '\$('
+endfunction
+
+function! s:GitCommand(args) abort
+    if !empty(a:args) && !s:GitUserArgsSafe(a:args)
+        echohl ErrorMsg
+        echom 'Unsafe git arguments. Run shell pipes, redirects, and command separators outside :Git.'
+        echohl None
+        return
+    endif
+    call s:GitOutput(a:args, empty(a:args) ? 'Status' : 'Command')
+endfunction
+
+command! -nargs=* CorporateSafeGit call <SID>GitCommand(<q-args>)
+command! CorporateSafeGitStatus call <SID>GitStatus()
+command! CorporateSafeGitChangedFiles call <SID>GitChangedFiles()
+command! CorporateSafeGitDiff call <SID>GitDiffFile()
+command! CorporateSafeGitLog call <SID>GitLog()
+command! CorporateSafeGitBlame call <SID>GitBlameFile()
+
+if exists(':Git') != 2 || get(g:, 'corporate_safe_git_command_owner', '') ==# 'corporate-safe-vim'
+    command! -nargs=* Git call <SID>GitCommand(<q-args>)
+    let g:corporate_safe_git_command_owner = 'corporate-safe-vim'
+endif
+
+nnoremap <silent> <leader>Gs :call <SID>GitStatus()<CR>
+nnoremap <silent> <leader>Gq :call <SID>GitChangedFiles()<CR>
+nnoremap <silent> <leader>Gd :call <SID>GitDiffFile()<CR>
+nnoremap <silent> <leader>Gl :call <SID>GitLog()<CR>
+nnoremap <silent> <leader>Gb :call <SID>GitBlameFile()<CR>
+nnoremap <silent> <leader>Ga :call <SID>GitStageFile()<CR>
+nnoremap <silent> <leader>GA :call <SID>GitStageAll()<CR>
+nnoremap <silent> <leader>Gc :call <SID>GitCommitPrompt()<CR>
+nnoremap <silent> <leader>Gp :call <SID>GitShell('push')<CR>
+nnoremap <silent> <leader>GP :call <SID>GitShell('pull --ff-only')<CR>
+nnoremap <silent> <leader>Gr :call <SID>GitRestoreFile()<CR>
+nnoremap <leader>Gg :Git<Space>
 
 " ----------------------------------------------------------
 " Movement improvements

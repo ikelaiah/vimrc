@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## [1.1.0] - 2026-05-04
+
+### Added
+
+- Added optional stock-Vim Git workflow commands and `Space G...` mappings for status, changed-file quickfix, current-file diff, log, blame, staging, commit, push, pull, and restore.
+- Added `:Git`, `:CorporateSafeGit`, and focused `:CorporateSafeGit...` commands for plugin-free Git use from the repository root.
+- Added Git availability and repository detection to `:CorporateSafeHealth`.
+- Documented the optional Git workflow and clarified that Git is only called when those mappings or commands are invoked.
+- Guarded ad hoc `:Git {args}` commands against shell separators, redirects, and command substitution.
+
 ## [1.0.0] - 2026-04-29
 
 ### Added

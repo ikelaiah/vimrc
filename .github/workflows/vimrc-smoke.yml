@@ -115,6 +115,33 @@ jobs:
           qa!
           VIM
 
+          cat > build-temp/check-git-workflow.vim <<'VIM'
+          set nomore
+          CorporateSafeGitStatus
+          if bufname('%') !=# 'Corporate-Safe-Git-Status'
+            cquit
+          endif
+          if search('Repository:', 'n') == 0
+            cquit
+          endif
+          if search('Exit: 0', 'n') == 0
+            cquit
+          endif
+          if search('^##', 'n') == 0
+            cquit
+          endif
+          bwipeout!
+          CorporateSafeGitLog
+          if bufname('%') !=# 'Corporate-Safe-Git-Log'
+            cquit
+          endif
+          if search('Exit: 0', 'n') == 0
+            cquit
+          endif
+          autocmd! Session
+          qa!
+          VIM
+
           cat > build-temp/check-optouts.vim <<'VIM'
           set nomore
           CorporateSafeHealth
@@ -175,6 +202,12 @@ jobs:
           HOME="$PWD/build-temp/vim-health-test" \
             vim -Nu "$PWD/.vimrc" -n -es -i NONE \
               -S build-temp/check-health.vim
+
+      - name: Check optional git workflow
+        run: |
+          HOME="$PWD/build-temp/vim-git-test" \
+            vim -Nu "$PWD/.vimrc" -n -es -i NONE \
+              -S build-temp/check-git-workflow.vim
 
       - name: Check policy opt-outs
         run: |

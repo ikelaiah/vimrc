@@ -5,7 +5,7 @@
 </p>
 
 ![Vim 8+](https://img.shields.io/badge/Vim-8%2B-brightgreen)
-![Version](https://img.shields.io/badge/version-1.0.0-informational)
+![Version](https://img.shields.io/badge/version-1.1.0-informational)
 [![Vimrc Smoke Test](https://github.com/ikelaiah/vimrc/actions/workflows/vimrc-smoke.yml/badge.svg)](https://github.com/ikelaiah/vimrc/actions/workflows/vimrc-smoke.yml)
 ![Made with Vim](https://img.shields.io/badge/Made%20with-Vim-019733)
 ![Plugins](https://img.shields.io/badge/plugins-none-blue)
@@ -16,11 +16,13 @@
 
 A **pure Vim configuration designed for restricted corporate environments**.
 
-No additional Vim plugins. No plugin manager. No Python / Node / ripgrep / ctags calls. No external binaries required.
+No additional Vim plugins. No plugin manager. No Python / Node / ripgrep / ctags required. No external binaries required for startup, editing, search, or sessions.
+
+Optional Git workflow mappings call your installed `git` executable only when you invoke them.
 
 Just **stock Vim features used effectively**.
 
-Current release: **1.0.0**. See [CHANGELOG.md](CHANGELOG.md).
+Current release: **1.1.0**. See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -57,8 +59,10 @@ In this repository, **corporate-safe** means a deliberately small approval footp
 - no Vim plugins
 - no plugin manager
 - no package-managed dependencies
-- no Python, Node, ripgrep, ctags, or other external helper tools
+- no Python, Node, ripgrep, ctags, or other external helper tools required for startup, editing, search, or sessions
 - stock Vim features only
+
+The Git workflow commands are optional wrappers around an installed `git` executable. They do not run at startup and are unavailable gracefully when `git` is not on `PATH`.
 
 It does **not** claim formal security certification, company policy approval, or a zero local data footprint. Vim can still create local recovery and history files; those files are documented below.
 
@@ -76,6 +80,8 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Prompted project search using `vimgrep` with file-glob scoping
 - [x] Configurable deep file search and default project-search glob
 - [x] Search word under cursor across the project
+- [x] Optional stock-Vim Git workflow mappings for status, changed files, diff, log, blame, staging, commit, push, pull, and restore
+- [x] Git changed-files quickfix list for jumping through work-in-progress files
 - [x] In-editor shortcut cheatsheet
 - [x] In-editor health report for locked-down workstation debugging
 - [x] Recent-file picker
@@ -293,6 +299,41 @@ let g:corporate_safe_deep_find = 0
 
 ---
 
+### Optional Git Workflow
+
+Git support is plugin-free and optional. Vim starts normally without `git`; the mappings below shell out to the installed `git` executable only when invoked.
+
+| Action | Shortcut / command |
+| ------ | ------------------ |
+| Status | `Space Gs` or `:Git` |
+| Changed files in quickfix | `Space Gq` |
+| Diff current file | `Space Gd` |
+| Recent repository log | `Space Gl` |
+| Blame current file | `Space Gb` |
+| Stage current file | `Space Ga` |
+| Stage all changes | `Space GA` |
+| Commit staged changes with a message prompt | `Space Gc` |
+| Push | `Space Gp` |
+| Pull fast-forward only | `Space GP` |
+| Restore current file from `HEAD` with confirmation | `Space Gr` |
+| Run a git command from the repo root | `Space Gg` or `:Git {args}` |
+
+Examples:
+
+```vim
+:Git status --short --branch
+:Git diff -- README.md
+:Git log --oneline --decorate -10
+```
+
+Git status, diff, log, blame, stage, commit, and restore output opens in a read-only scratch buffer. Press `q` in that buffer to close it. `Space Gq` loads changed files into the quickfix list so `]q` and `[q` can jump through your current work.
+
+For ad hoc `:Git {args}` commands, shell pipes, redirects, command substitution, and command separators are rejected; use a normal shell for those.
+
+The `Space Gp` and `Space GP` mappings use Vim's normal shell command path so credential prompts and remote output behave like standard `:!git push` / `:!git pull --ff-only` commands.
+
+---
+
 ### Buffers
 
 | Action          | Shortcut   |
@@ -444,7 +485,7 @@ Open a stock-Vim health report:
 :CorporateSafeHealth
 ```
 
-The report shows the config version, Vim version, plugin/external-tool requirements, feature support, runtime directory status, local-state mode, project/session paths, netrw availability, auto-session state, session save/restore status, deep-find settings, default search glob, and key mappings.
+The report shows the config version, Vim version, plugin/external-tool requirements, optional Git availability, feature support, runtime directory status, local-state mode, project/session paths, netrw availability, auto-session state, session save/restore status, deep-find settings, default search glob, and key mappings.
 
 ---
 
@@ -468,7 +509,7 @@ Navigation should be faster than thinking.
 
 ## CI Smoke Test
 
-The GitHub Actions workflow runs `.vimrc` with Vim in Ex mode and isolated `HOME` directories. It catches syntax errors, runtime directory regressions, line-ending regressions, relative-number toggle regressions, netrw sidebar toggle regressions, session save/restore regressions, health-report regressions, and opt-out regressions without installing runtime plugins.
+The GitHub Actions workflow runs `.vimrc` with Vim in Ex mode and isolated `HOME` directories. It catches syntax errors, runtime directory regressions, line-ending regressions, relative-number toggle regressions, netrw sidebar toggle regressions, session save/restore regressions, optional Git-command regressions, health-report regressions, and opt-out regressions without installing runtime plugins.
 
 ---
 
