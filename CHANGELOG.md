@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [1.2.0] - 2026-05-04
+
+### Added
+
+- Added plugin-free legacy-code navigation helpers for current-file outlines, likely definitions, references/callers, and combined symbol flow using quickfix and `vimgrep`.
+- Added optional Vim tags-file jump support through `Space ft` / `:CorporateSafeTag` with upward `tags` file discovery.
+- Added `g:corporate_safe_legacy_glob` to scope legacy symbol searches separately from normal project grep.
+- Documented the new legacy navigation workflow and surfaced the mappings in help and health output.
+
 ## [1.1.0] - 2026-05-04
 
 ### Added

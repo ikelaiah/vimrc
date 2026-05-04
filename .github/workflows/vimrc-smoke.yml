@@ -142,6 +142,45 @@ jobs:
           qa!
           VIM
 
+          cat > build-temp/check-legacy-navigation.vim <<'VIM'
+          set nomore
+          let g:corporate_safe_legacy_glob = 'demo/*.py'
+          edit demo/example.py
+          CorporateSafeOutline
+          if len(getqflist()) < 1
+            cquit
+          endif
+          if getqflist()[0].text !~# 'calculate_total'
+            cquit
+          endif
+          CorporateSafeDefinitions calculate_total
+          if len(getqflist()) < 1
+            cquit
+          endif
+          if getqflist()[0].text !~# '^\[definition\].*calculate_total'
+            cquit
+          endif
+          CorporateSafeFlow calculate_total
+          if len(getqflist()) < 2
+            cquit
+          endif
+          let s:has_definition = 0
+          let s:has_reference = 0
+          for s:item in getqflist()
+            if s:item.text =~# '^\[definition\]'
+              let s:has_definition = 1
+            endif
+            if s:item.text =~# '^\[reference\]'
+              let s:has_reference = 1
+            endif
+          endfor
+          if !s:has_definition || !s:has_reference
+            cquit
+          endif
+          autocmd! Session
+          qa!
+          VIM
+
           cat > build-temp/check-optouts.vim <<'VIM'
           set nomore
           CorporateSafeHealth
@@ -202,6 +241,12 @@ jobs:
           HOME="$PWD/build-temp/vim-health-test" \
             vim -Nu "$PWD/.vimrc" -n -es -i NONE \
               -S build-temp/check-health.vim
+
+      - name: Check legacy navigation
+        run: |
+          HOME="$PWD/build-temp/vim-legacy-navigation-test" \
+            vim -Nu "$PWD/.vimrc" -n -es -i NONE \
+              -S build-temp/check-legacy-navigation.vim
 
       - name: Check optional git workflow
         run: |

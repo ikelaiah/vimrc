@@ -5,7 +5,7 @@
 </p>
 
 ![Vim 8+](https://img.shields.io/badge/Vim-8%2B-brightgreen)
-![Version](https://img.shields.io/badge/version-1.1.0-informational)
+![Version](https://img.shields.io/badge/version-1.2.0-informational)
 [![Vimrc Smoke Test](https://github.com/ikelaiah/vimrc/actions/workflows/vimrc-smoke.yml/badge.svg)](https://github.com/ikelaiah/vimrc/actions/workflows/vimrc-smoke.yml)
 ![Made with Vim](https://img.shields.io/badge/Made%20with-Vim-019733)
 ![Plugins](https://img.shields.io/badge/plugins-none-blue)
@@ -18,11 +18,11 @@ A **pure Vim configuration designed for restricted corporate environments**.
 
 No additional Vim plugins. No plugin manager. No Python / Node / ripgrep / ctags required. No external binaries required for startup, editing, search, or sessions.
 
-Optional Git workflow mappings call your installed `git` executable only when you invoke them.
+Optional Git workflow mappings call your installed `git` executable only when you invoke them. Legacy navigation uses stock Vim search and quickfix; the tag jump only uses an existing `tags` file if you already have one.
 
 Just **stock Vim features used effectively**.
 
-Current release: **1.1.0**. See [CHANGELOG.md](CHANGELOG.md).
+Current release: **1.2.0**. See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -80,6 +80,9 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Prompted project search using `vimgrep` with file-glob scoping
 - [x] Configurable deep file search and default project-search glob
 - [x] Search word under cursor across the project
+- [x] Current-file function/class outline for legacy code
+- [x] Symbol definition, reference, caller, and flow quickfix views using stock Vim search
+- [x] Optional tags-file jump support through Vim's built-in tag commands
 - [x] Optional stock-Vim Git workflow mappings for status, changed files, diff, log, blame, staging, commit, push, pull, and restore
 - [x] Git changed-files quickfix list for jumping through work-in-progress files
 - [x] In-editor shortcut cheatsheet
@@ -104,7 +107,7 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Safer truecolor probing for terminals that expose the option but cannot enable it
 - [x] Safer prompted project search that rejects command separators in file globs
 - [x] Quickfix next/previous mappings with readable boundary errors
-- [x] CI smoke tests for sourcing, relative-number toggle, netrw toggle, sessions, health output, and policy opt-outs
+- [x] CI smoke tests for sourcing, relative-number toggle, netrw toggle, sessions, legacy navigation, health output, and policy opt-outs
 
 Vim's built-in filetype detection handles many languages. This configuration only adds a small set of indentation defaults where they improve day-to-day editing.
 
@@ -296,6 +299,32 @@ Deep `:find` support is enabled by default through `set path+=**`. Disable it fo
 ```vim
 let g:corporate_safe_deep_find = 0
 ```
+
+---
+
+### Legacy Code Navigation
+
+These mappings are intentionally heuristic. They are meant to help you orient yourself in old codebases when plugins, language servers, ripgrep, and ctags are not available.
+
+| Action | Shortcut / command |
+| ------ | ------------------ |
+| Current file function/class outline | `Space fo` or `:CorporateSafeOutline` |
+| Likely definition for a symbol | `Space fd` or `:CorporateSafeDefinitions {name}` |
+| Callers/references for a symbol | `Space fc` or `:CorporateSafeReferences {name}` |
+| Combined symbol flow | `Space fF` or `:CorporateSafeFlow {name}` |
+| Jump/select from an existing tags file | `Space ft` or `:CorporateSafeTag {name}` |
+
+`Space fo` scans the current buffer for common function, method, class, procedure, subroutine, shell-function, SQL routine, JavaScript arrow/property, Go, Python, VB-style, and C-like definitions, then loads the outline into quickfix.
+
+`Space fd`, `Space fc`, and `Space fF` prompt for a symbol and file glob. The matching commands use the configured default glob when you pass `{name}`. `Space fF` puts likely definitions first and then references, so `]q` and `[q` can step through a rough flow for the function under investigation.
+
+The default glob is configurable separately from normal project search:
+
+```vim
+let g:corporate_safe_legacy_glob = 'src/**/*'
+```
+
+Vim tag navigation is enabled with `set tags=./tags;,tags;`, so Vim searches for `tags` files from the current file upward. This configuration does not require or generate ctags; `Space ft` only becomes useful if your environment already provides an approved tags file.
 
 ---
 
@@ -509,7 +538,7 @@ Navigation should be faster than thinking.
 
 ## CI Smoke Test
 
-The GitHub Actions workflow runs `.vimrc` with Vim in Ex mode and isolated `HOME` directories. It catches syntax errors, runtime directory regressions, line-ending regressions, relative-number toggle regressions, netrw sidebar toggle regressions, session save/restore regressions, optional Git-command regressions, health-report regressions, and opt-out regressions without installing runtime plugins.
+The GitHub Actions workflow runs `.vimrc` with Vim in Ex mode and isolated `HOME` directories. It catches syntax errors, runtime directory regressions, line-ending regressions, relative-number toggle regressions, netrw sidebar toggle regressions, session save/restore regressions, legacy-navigation regressions, optional Git-command regressions, health-report regressions, and opt-out regressions without installing runtime plugins.
 
 ---
 
