@@ -769,8 +769,13 @@ function! s:LegacySymbolPattern(symbol) abort
     return '\<' . escape(a:symbol, '\.*$^~[]') . '\>'
 endfunction
 
+function! s:LegacyStatementKeywordGuard() abort
+    return '\%(\%(if\|for\|foreach\|while\|switch\|catch\|return\|throw\|sizeof\|typeof\|function\|def\|class\|new\|using\|include\|require\|print\|echo\)\>\)\@!'
+endfunction
+
 function! s:LegacyDefinitionPatterns(symbol) abort
     let l:word = s:LegacySymbolPattern(a:symbol)
+    let l:c_like_head = s:LegacyStatementKeywordGuard() . '\%(\k\+\s\+\)\{1,6}\%([*&]\s*\)*'
     return [
         \ '\c^\s*\%(export\s\+\)\=\%(abstract\s\+\)\=class\s\+' . l:word,
         \ '\c^\s*\%(async\s\+\)\=def\s\+' . l:word . '\s*(',
@@ -790,11 +795,12 @@ function! s:LegacyDefinitionPatterns(symbol) abort
         \ '^\s*\%(function\s\+\)\=' . l:word . '\s*()',
         \ '\c^\s*' . l:word . '\s*[:=]\s*\%(async\s\+\)\=function\>',
         \ '\c^\s*' . l:word . '\s*[:=]\s*\%(async\s\+\)\=.\{-}=>',
-        \ '\c^\s*\%(\k\+\s\+\)\{1,6}\%([*&]\s*\)*' . l:word . '\s*(.\{-})\s*\%({\|$\)',
+        \ '\c^\s*' . l:c_like_head . l:word . '\s*(.\{-})\s*\%({\|$\)',
         \ ]
 endfunction
 
 function! s:LegacyOutlinePatterns() abort
+    let l:c_like_head = s:LegacyStatementKeywordGuard() . '\%(\k\+\s\+\)\{1,6}\%([*&]\s*\)*'
     return [
         \ {'kind': 'class', 'pattern': '\c^\s*\%(export\s\+\)\=\%(abstract\s\+\)\=class\s\+\k\+'},
         \ {'kind': 'python', 'pattern': '\c^\s*\%(async\s\+\)\=def\s\+\k\+\s*('},
@@ -813,7 +819,7 @@ function! s:LegacyOutlinePatterns() abort
         \ {'kind': 'shell', 'pattern': '^\s*\%(function\s\+\)\=\k\+\s*()'},
         \ {'kind': 'js-prop', 'pattern': '\c^\s*\k\+\s*[:=]\s*\%(async\s\+\)\=function\>'},
         \ {'kind': 'js-arrow', 'pattern': '\c^\s*\k\+\s*[:=]\s*\%(async\s\+\)\=.\{-}=>'},
-        \ {'kind': 'c-like', 'pattern': '\c^\s*\%(\k\+\s\+\)\{1,6}\%([*&]\s*\)*\k\+\s*(.\{-})\s*\%({\|$\)'},
+        \ {'kind': 'c-like', 'pattern': '\c^\s*' . l:c_like_head . '\k\+\s*(.\{-})\s*\%({\|$\)'},
         \ ]
 endfunction
 
