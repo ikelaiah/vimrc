@@ -8,7 +8,7 @@ if has('multi_byte')
     set encoding=utf-8
     set fileencodings=utf-8,default,latin1
 endif
-let g:corporate_safe_vim_version = '1.2.0'
+let g:corporate_safe_vim_version = '1.3.0'
 let g:corporate_safe_auto_sessions = get(g:, 'corporate_safe_auto_sessions', 1)
 let g:corporate_safe_deep_find = get(g:, 'corporate_safe_deep_find', 1)
 let g:corporate_safe_search_glob = get(g:, 'corporate_safe_search_glob', '**/*')
@@ -274,7 +274,12 @@ function! s:ShowHelp() abort
         \ '  <Space>fd    find likely definition for symbol',
         \ '  <Space>fc    find callers/references for symbol',
         \ '  <Space>fF    combined symbol flow: definitions then references',
+        \ '  <Space>fO    outgoing calls from current function',
+        \ '  <Space>fI    inspect symbol: definitions, references, callees',
+        \ '  <Space>fT    TODO/FIXME/HACK/BUG quickfix',
+        \ '  <Space>fh    legacy hotspot quickfix',
         \ '  <Space>ft    jump/select from Vim tags when a tags file exists',
+        \ '  <Space>fH    tags health report',
         \ '',
         \ 'Git (optional, uses installed git only when invoked)',
         \ '  <Space>Gs    git status',
@@ -387,7 +392,12 @@ function! s:MappingLines() abort
         \ '    <Space>fd       find likely definition for symbol',
         \ '    <Space>fc       find callers/references for symbol',
         \ '    <Space>fF       combined symbol flow',
+        \ '    <Space>fO       outgoing calls from current function',
+        \ '    <Space>fI       inspect symbol flow report',
+        \ '    <Space>fT       TODO/FIXME/HACK/BUG quickfix',
+        \ '    <Space>fh       legacy hotspot quickfix',
         \ '    <Space>ft       jump/select from Vim tags',
+        \ '    <Space>fH       tags health report',
         \ '',
         \ '  Git',
         \ '    <Space>Gs       git status',
@@ -743,9 +753,9 @@ function! s:LegacyResolveSymbol(arg, prompt) abort
         echo 'Symbol navigation cancelled'
         return ''
     endif
-    if l:symbol !~# '^\k\+$'
+    if l:symbol =~# '[[:space:][:cntrl:]|;&<>`]' || l:symbol !~# '^[A-Za-z0-9_.$#-]\+$'
         echohl WarningMsg
-        echom 'Use one symbol name only. Spaces, punctuation, and paths are not accepted here.'
+        echom 'Use one symbol name only. Spaces, shell characters, and paths are not accepted here.'
         echohl None
         return ''
     endif
@@ -753,6 +763,9 @@ function! s:LegacyResolveSymbol(arg, prompt) abort
 endfunction
 
 function! s:LegacySymbolPattern(symbol) abort
+    if a:symbol !~# '^\k\+$'
+        return '\V' . escape(a:symbol, '\') . '\m'
+    endif
     return '\<' . escape(a:symbol, '\.*$^~[]') . '\>'
 endfunction
 
@@ -761,11 +774,19 @@ function! s:LegacyDefinitionPatterns(symbol) abort
     return [
         \ '\c^\s*\%(export\s\+\)\=\%(abstract\s\+\)\=class\s\+' . l:word,
         \ '\c^\s*\%(async\s\+\)\=def\s\+' . l:word . '\s*(',
+        \ '\c^\s*sub\s\+' . l:word,
         \ '\c^\s*\%(export\s\+\)\=\%(async\s\+\)\=function\s\+' . l:word . '\s*(',
+        \ '\c^\s*function\s\+\%(global:\|script:\|local:\)\=' . l:word,
         \ '\c^\s*\%(\%(public\|private\|protected\|static\|final\|abstract\|override\|virtual\)\s\+\)*function\s\+' . l:word . '\s*(',
         \ '\c^\s*func\s\+\%((.\{-})\s\+\)\=' . l:word . '\s*(',
         \ '\c^\s*\%(\%(public\|private\|protected\|friend\|static\)\s\+\)*\%(sub\|function\)\s\+' . l:word,
-        \ '\c^\s*\%(create\|alter\)\s\+\%(or\s\+replace\s\+\)\=\%(procedure\|function\|package\)\s\+' . l:word,
+        \ '\c^\s*\%(create\|alter\)\s\+\%(or\s\+replace\s\+\)\=\%(procedure\|proc\|function\|package\)\s\+\%(\k\+\.\)\=' . l:word,
+        \ '\c^\s*\%(create\|alter\)\s\+\%(procedure\|proc\|function\)\s\+\%(\[[^]]\+\]\.\)\=\[\=' . l:word . '\]\=',
+        \ '\c^\s*\%(form\|method\|module\)\s\+' . l:word,
+        \ '\c^\s*function\s\+' . l:word,
+        \ '\c^\s*program-id\.\s\+' . l:word,
+        \ '\c^\s*' . l:word . '\s\+\%(section\|paragraph\)\.',
+        \ '\c^\s*' . l:word . '\.',
         \ '^\s*\%(function\s\+\)\=' . l:word . '\s*()',
         \ '\c^\s*' . l:word . '\s*[:=]\s*\%(async\s\+\)\=function\>',
         \ '\c^\s*' . l:word . '\s*[:=]\s*\%(async\s\+\)\=.\{-}=>',
@@ -777,15 +798,217 @@ function! s:LegacyOutlinePatterns() abort
     return [
         \ {'kind': 'class', 'pattern': '\c^\s*\%(export\s\+\)\=\%(abstract\s\+\)\=class\s\+\k\+'},
         \ {'kind': 'python', 'pattern': '\c^\s*\%(async\s\+\)\=def\s\+\k\+\s*('},
+        \ {'kind': 'perl', 'pattern': '\c^\s*sub\s\+\k\+'},
         \ {'kind': 'function', 'pattern': '\c^\s*\%(export\s\+\)\=\%(async\s\+\)\=function\s\+\k\+\s*('},
+        \ {'kind': 'powershell', 'pattern': '\c^\s*function\s\+\%(global:\|script:\|local:\)\=\k\+'},
         \ {'kind': 'method', 'pattern': '\c^\s*\%(\%(public\|private\|protected\|static\|final\|abstract\|override\|virtual\)\s\+\)*function\s\+\k\+\s*('},
         \ {'kind': 'go', 'pattern': '\c^\s*func\s\+\%((.\{-})\s\+\)\=\k\+\s*('},
         \ {'kind': 'vb', 'pattern': '\c^\s*\%(\%(public\|private\|protected\|friend\|static\)\s\+\)*\%(sub\|function\)\s\+\k\+'},
-        \ {'kind': 'sql', 'pattern': '\c^\s*\%(create\|alter\)\s\+\%(or\s\+replace\s\+\)\=\%(procedure\|function\|package\)\s\+\k\+'},
+        \ {'kind': 'sql', 'pattern': '\c^\s*\%(create\|alter\)\s\+\%(or\s\+replace\s\+\)\=\%(procedure\|proc\|function\|package\)\s\+\%(\k\+\.\)\=\k\+'},
+        \ {'kind': 'tsql', 'pattern': '\c^\s*\%(create\|alter\)\s\+\%(procedure\|proc\|function\)\s\+\%(\[[^]]\+\]\.\)\=\[\=\k\+\]\='},
+        \ {'kind': 'abap', 'pattern': '\c^\s*\%(form\|method\|module\)\s\+\k\+'},
+        \ {'kind': 'cobol-program', 'pattern': '\c^\s*program-id\.\s\+[A-Za-z0-9_-]\+'},
+        \ {'kind': 'cobol-section', 'pattern': '\c^\s*[A-Za-z0-9_-]\+\s\+\%(section\|paragraph\)\.'},
+        \ {'kind': 'cobol-para', 'pattern': '\c^\s*[A-Za-z0-9_-]\+\.'},
         \ {'kind': 'shell', 'pattern': '^\s*\%(function\s\+\)\=\k\+\s*()'},
         \ {'kind': 'js-prop', 'pattern': '\c^\s*\k\+\s*[:=]\s*\%(async\s\+\)\=function\>'},
         \ {'kind': 'js-arrow', 'pattern': '\c^\s*\k\+\s*[:=]\s*\%(async\s\+\)\=.\{-}=>'},
         \ {'kind': 'c-like', 'pattern': '\c^\s*\%(\k\+\s\+\)\{1,6}\%([*&]\s*\)*\k\+\s*(.\{-})\s*\%({\|$\)'},
+        \ ]
+endfunction
+
+let s:legacy_call_keywords = {
+    \ 'if': 1,
+    \ 'for': 1,
+    \ 'foreach': 1,
+    \ 'while': 1,
+    \ 'switch': 1,
+    \ 'catch': 1,
+    \ 'return': 1,
+    \ 'throw': 1,
+    \ 'sizeof': 1,
+    \ 'typeof': 1,
+    \ 'function': 1,
+    \ 'def': 1,
+    \ 'class': 1,
+    \ 'new': 1,
+    \ 'using': 1,
+    \ 'include': 1,
+    \ 'require': 1,
+    \ 'print': 1,
+    \ 'echo': 1,
+    \ }
+
+function! s:LegacyOutlineKind(text) abort
+    for l:pattern in s:LegacyOutlinePatterns()
+        if a:text =~# l:pattern.pattern
+            return l:pattern.kind
+        endif
+    endfor
+    return ''
+endfunction
+
+function! s:LegacySymbolFromDefinitionLine(text) abort
+    let l:patterns = [
+        \ '\c\<class\s\+\zs[A-Za-z0-9_.$#-]\+',
+        \ '\c\<def\s\+\zs[A-Za-z0-9_.$#-]\+',
+        \ '\c\<sub\s\+\zs[A-Za-z0-9_.$#-]\+',
+        \ '\c\<function\s\+\%(global:\|script:\|local:\)\=\zs[A-Za-z0-9_.$#-]\+',
+        \ '\c\<func\s\+\%((.\{-})\s\+\)\=\zs[A-Za-z0-9_.$#-]\+',
+        \ '\c\<\%(procedure\|proc\|package\)\s\+\%(\[[^]]\+\]\.\|\k\+\.\)\=\[\=\zs[A-Za-z0-9_.$#-]\+',
+        \ '\c\<\%(form\|method\|module\)\s\+\zs[A-Za-z0-9_.$#-]\+',
+        \ '\c\<program-id\.\s\+\zs[A-Za-z0-9_-]\+',
+        \ ]
+    for l:pattern in l:patterns
+        let l:match = matchstr(a:text, l:pattern)
+        if !empty(l:match)
+            return substitute(l:match, '[\[\]]', '', 'g')
+        endif
+    endfor
+    if a:text =~# '\c^\s*[A-Za-z0-9_-]\+\s\+\%(section\|paragraph\)\.'
+        return matchstr(a:text, '\c^\s*\zs[A-Za-z0-9_-]\+\ze\s\+\%(section\|paragraph\)\.')
+    endif
+    if a:text =~# '\c^\s*[A-Za-z0-9_-]\+\.'
+        return matchstr(a:text, '\c^\s*\zs[A-Za-z0-9_-]\+\ze\.')
+    endif
+    if a:text =~# '('
+        let l:head = matchstr(a:text, '^.\{-}\ze(')
+        let l:match = matchstr(l:head, '[A-Za-z0-9_.$#-]\+\s*$')
+        return substitute(l:match, '\s\+$', '', '')
+    endif
+    return ''
+endfunction
+
+function! s:LegacyCurrentContext() abort
+    let l:current = line('.')
+    let l:start = 0
+    let l:kind = ''
+    for l:lnum in reverse(range(1, l:current))
+        let l:kind = s:LegacyOutlineKind(getline(l:lnum))
+        if !empty(l:kind)
+            let l:start = l:lnum
+            break
+        endif
+    endfor
+    if l:start == 0
+        return {}
+    endif
+
+    let l:start_indent = indent(l:start)
+    let l:end = line('$')
+    for l:lnum in range(l:start + 1, line('$'))
+        if l:kind ==# 'python' && getline(l:lnum) !~# '^\s*$' && indent(l:lnum) <= l:start_indent
+            let l:end = l:lnum - 1
+            break
+        endif
+        let l:next_kind = s:LegacyOutlineKind(getline(l:lnum))
+        if !empty(l:next_kind) && indent(l:lnum) <= l:start_indent
+            let l:end = l:lnum - 1
+            break
+        endif
+    endfor
+
+    let l:name = s:LegacySymbolFromDefinitionLine(getline(l:start))
+    return {
+        \ 'bufnr': bufnr('%'),
+        \ 'name': empty(l:name) ? '(unknown)' : l:name,
+        \ 'kind': l:kind,
+        \ 'start': l:start,
+        \ 'end': l:end,
+        \ 'indent': l:start_indent,
+        \ 'text': getline(l:start),
+        \ }
+endfunction
+
+function! s:LegacyIsCommentLine(text) abort
+    return a:text =~# '^\s*\(#\|//\|--\|/\*\|\*\|REM\>\|rem\>\|''\)'
+endfunction
+
+function! s:LegacyIsCallKeyword(name) abort
+    let l:name = tolower(substitute(a:name, '^.\+\.', '', ''))
+    return has_key(s:legacy_call_keywords, l:name)
+endfunction
+
+function! s:LegacyCallCandidatesFromLine(text, lnum) abort
+    if s:LegacyIsCommentLine(a:text)
+        return []
+    endif
+
+    let l:calls = []
+    let l:pos = 0
+    while 1
+        let l:start = match(a:text, '[A-Za-z_][A-Za-z0-9_.$#]*\s*(', l:pos)
+        if l:start < 0
+            break
+        endif
+        let l:raw = matchstr(a:text, '[A-Za-z_][A-Za-z0-9_.$#]*\s*(', l:start)
+        let l:name = matchstr(l:raw, '^[A-Za-z_][A-Za-z0-9_.$#]*')
+        let l:pos = l:start + strlen(l:raw)
+        if !empty(l:name) && !s:LegacyIsCallKeyword(l:name)
+            call add(l:calls, {'name': l:name, 'col': l:start + 1})
+        endif
+    endwhile
+
+    let l:legacy_patterns = [
+        \ '\c\<call\s\+function\s\+\(["'']\)\=\zs[A-Za-z0-9_.$#-]\+',
+        \ '\c\<call\s\+\(["'']\)\=\zs[A-Za-z0-9_.$#-]\+',
+        \ '\c\<perform\s\+\zs[A-Za-z0-9_-]\+',
+        \ ]
+    for l:pattern in l:legacy_patterns
+        let l:pos = 0
+        while 1
+            let l:name = matchstr(a:text, l:pattern, l:pos)
+            if empty(l:name)
+                break
+            endif
+            let l:start = match(a:text, l:pattern, l:pos)
+            let l:pos = l:start + strlen(l:name)
+            if !s:LegacyIsCallKeyword(l:name)
+                call add(l:calls, {'name': l:name, 'col': l:start + 1})
+            endif
+        endwhile
+    endfor
+
+    return l:calls
+endfunction
+
+function! s:LegacyOutgoingItemsForContext(context) abort
+    if empty(a:context)
+        return []
+    endif
+    let l:items = []
+    let l:start = min([a:context.start + 1, a:context.end])
+    for l:lnum in range(l:start, a:context.end)
+        let l:text = getline(l:lnum)
+        for l:call in s:LegacyCallCandidatesFromLine(l:text, l:lnum)
+            call add(l:items, {
+                \ 'bufnr': bufnr('%'),
+                \ 'lnum': l:lnum,
+                \ 'col': l:call.col,
+                \ 'type': 'C',
+                \ 'text': '[callee:' . l:call.name . '] ' . l:text,
+                \ })
+        endfor
+    endfor
+    return s:DedupQuickfixItems(l:items)
+endfunction
+
+function! s:LegacyTodoSpecs() abort
+    return [
+        \ {'kind': 'todo', 'pattern': '\c\<\%(TODO\|FIXME\|HACK\|BUG\|XXX\|DEPRECATED\|WORKAROUND\)\>'},
+        \ ]
+endfunction
+
+function! s:LegacyHotspotSpecs() abort
+    return [
+        \ {'kind': 'secret-literal', 'pattern': '\c\%(password\|passwd\|pwd\|secret\|api[_-]\=key\|token\)\s*[=:]\s*[''"][^''"]\+[''"]'},
+        \ {'kind': 'dynamic-eval', 'pattern': '\c\<\%(eval\|execScript\|Invoke-Expression\)\s*('},
+        \ {'kind': 'shell-exec', 'pattern': '\c\%(Runtime\.getRuntime\|ProcessBuilder\|shell_exec\|passthru\|Start-Process\|system\|exec\|popen\)\s*('},
+        \ {'kind': 'sql-string', 'pattern': '\c[''"].*\%(select\|insert\|update\|delete\)\s\+'},
+        \ {'kind': 'ssl-disabled', 'pattern': '\c\%(verify\s*=\s*false\|rejectUnauthorized\s*:\s*false\|SSL_VERIFYPEER.\{-}false\|ssl_verify_none\)'},
+        \ {'kind': 'debug-leftover', 'pattern': '\c\%(debugger\|console\.log\|printStackTrace\|var_dump\|dd\)\s*('},
+        \ {'kind': 'broad-catch', 'pattern': '\c\<except\s*:\|catch\s*(.\{-})'},
+        \ {'kind': 'unsafe-temp', 'pattern': '\c\%(/tmp/\|mktemp\|tempnam\)'},
         \ ]
 endfunction
 
@@ -850,6 +1073,24 @@ function! s:CollectVimgrepItems(patterns, glob, kind, type) abort
     return s:DedupQuickfixItems(l:items)
 endfunction
 
+function! s:CollectLegacyPatternItems(specs, glob, type) abort
+    let l:items = []
+    for l:spec in a:specs
+        try
+            execute 'silent vimgrep /' . escape(l:spec.pattern, '/') . '/gj ' . a:glob
+        catch /^Vim\%((\a\+)\)\=:E480/
+            continue
+        catch
+            echohl ErrorMsg
+            echom v:exception
+            echohl None
+            return []
+        endtry
+        call extend(l:items, s:DecorateQuickfixItems(getqflist(), l:spec.kind, a:type))
+    endfor
+    return s:DedupQuickfixItems(l:items)
+endfunction
+
 function! s:ShowQuickfixItems(items, title, empty_message) abort
     call setqflist(a:items, 'r')
     if empty(a:items)
@@ -861,6 +1102,48 @@ function! s:ShowQuickfixItems(items, title, empty_message) abort
     wincmd p
     echom a:title . ': ' . len(a:items)
     return 1
+endfunction
+
+function! s:QuickfixItemLocation(item) abort
+    let l:bufnr = get(a:item, 'bufnr', 0)
+    let l:name = get(a:item, 'filename', '')
+    if empty(l:name) && l:bufnr > 0
+        let l:name = bufname(l:bufnr)
+    endif
+    if empty(l:name)
+        let l:name = '[buffer]'
+    else
+        let l:name = fnamemodify(l:name, ':.')
+    endif
+    return l:name . ':' . get(a:item, 'lnum', 0)
+endfunction
+
+function! s:QuickfixReportLines(title, items, limit) abort
+    let l:lines = [a:title . ' (' . len(a:items) . ')']
+    if empty(a:items)
+        call add(l:lines, '  none')
+        return l:lines
+    endif
+    let l:count = 0
+    for l:item in a:items
+        let l:count += 1
+        if l:count > a:limit
+            call add(l:lines, '  ... ' . (len(a:items) - a:limit) . ' more')
+            break
+        endif
+        call add(l:lines, '  ' . s:QuickfixItemLocation(l:item) . ': ' . get(l:item, 'text', ''))
+    endfor
+    return l:lines
+endfunction
+
+function! s:ShowLegacyScratch(name, lines) abort
+    botright new
+    setlocal buftype=nofile bufhidden=wipe noswapfile nobuflisted
+    execute 'file ' . fnameescape(a:name)
+    call setline(1, empty(a:lines) ? ['(no output)'] : a:lines)
+    nnoremap <buffer> q :close<CR>
+    setlocal nomodifiable nomodified readonly
+    normal! gg
 endfunction
 
 function! s:LegacyOutline() abort
@@ -947,6 +1230,137 @@ function! s:LegacyFlow(arg) abort
     call s:ShowQuickfixItems(l:items, 'Symbol flow for ' . l:symbol, 'No definitions or references found for: ' . l:symbol)
 endfunction
 
+function! s:LegacyOutgoingCalls() abort
+    let l:context = s:LegacyCurrentContext()
+    if empty(l:context)
+        echohl WarningMsg
+        echom 'No current function/class context found. Move the cursor inside a likely function first.'
+        echohl None
+        return
+    endif
+    let l:items = s:LegacyOutgoingItemsForContext(l:context)
+    call s:ShowQuickfixItems(l:items, 'Outgoing calls from ' . l:context.name, 'No likely outgoing calls found in: ' . l:context.name)
+endfunction
+
+function! s:LegacyInspect(arg) abort
+    let l:symbol = s:LegacyResolveSymbol(a:arg, 'Inspect symbol')
+    if empty(l:symbol)
+        return
+    endif
+    let l:glob = s:LegacyResolveGlob(empty(a:arg))
+    if empty(l:glob)
+        return
+    endif
+
+    let l:context = s:LegacyCurrentContext()
+    let l:definitions = s:CollectVimgrepItems(s:LegacyDefinitionPatterns(l:symbol), l:glob, 'definition', 'D')
+    let l:references = s:CollectVimgrepItems([s:LegacySymbolPattern(l:symbol)], l:glob, 'reference', 'R')
+    let l:outgoing = s:LegacyOutgoingItemsForContext(l:context)
+    let l:lines = [
+        \ 'Legacy Symbol Inspection',
+        \ '',
+        \ 'Symbol: ' . l:symbol,
+        \ 'File glob: ' . l:glob,
+        \ 'Current file: ' . (empty(expand('%:p')) ? '[no file]' : fnamemodify(expand('%:p'), ':.')),
+        \ ]
+    if empty(l:context)
+        call extend(l:lines, ['Current context: none found', ''])
+    else
+        call extend(l:lines, [
+            \ 'Current context: ' . l:context.kind . ' ' . l:context.name . ' lines ' . l:context.start . '-' . l:context.end,
+            \ 'Context line: ' . l:context.text,
+            \ '',
+            \ ])
+    endif
+    call extend(l:lines, s:QuickfixReportLines('Likely definitions', l:definitions, 12))
+    call add(l:lines, '')
+    call extend(l:lines, s:QuickfixReportLines('References / callers', l:references, 20))
+    call add(l:lines, '')
+    call extend(l:lines, s:QuickfixReportLines('Likely outgoing calls in current context', l:outgoing, 20))
+    call extend(l:lines, [
+        \ '',
+        \ 'Workflow',
+        \ '  Use Space fd to jump to likely definitions.',
+        \ '  Use Space fc to step through callers/references.',
+        \ '  Use Space fO inside a function to inspect callees.',
+        \ '  Use ]q and [q to move through quickfix results.',
+        \ '',
+        \ 'Press q to close this report.',
+        \ ])
+    call s:ShowLegacyScratch('Corporate-Safe-Legacy-Inspection', l:lines)
+endfunction
+
+function! s:LegacyTodos(arg) abort
+    let l:glob = empty(a:arg) ? s:LegacyDefaultGlob() : a:arg
+    if empty(l:glob) || !s:SearchGlobSafe(l:glob)
+        return
+    endif
+    let l:items = s:CollectLegacyPatternItems(s:LegacyTodoSpecs(), l:glob, 'T')
+    call s:ShowQuickfixItems(l:items, 'Legacy TODO markers', 'No TODO/FIXME/HACK/BUG markers found in: ' . l:glob)
+endfunction
+
+function! s:LegacyTodosPrompt() abort
+    let l:glob = s:LegacyPromptGlob()
+    if empty(l:glob)
+        return
+    endif
+    call s:LegacyTodos(l:glob)
+endfunction
+
+function! s:LegacyHotspots(arg) abort
+    let l:glob = empty(a:arg) ? s:LegacyDefaultGlob() : a:arg
+    if empty(l:glob) || !s:SearchGlobSafe(l:glob)
+        return
+    endif
+    let l:items = s:CollectLegacyPatternItems(s:LegacyHotspotSpecs(), l:glob, 'H')
+    call s:ShowQuickfixItems(l:items, 'Legacy hotspots', 'No legacy hotspot patterns found in: ' . l:glob)
+endfunction
+
+function! s:LegacyHotspotsPrompt() abort
+    let l:glob = s:LegacyPromptGlob()
+    if empty(l:glob)
+        return
+    endif
+    call s:LegacyHotspots(l:glob)
+endfunction
+
+function! s:FindUpwardTags(start) abort
+    let l:start = empty(a:start) ? getcwd() : a:start
+    let l:found = findfile('tags', fnamemodify(l:start, ':p') . ';')
+    return empty(l:found) ? '' : fnamemodify(l:found, ':p')
+endfunction
+
+function! s:LegacyTagsHealth() abort
+    let l:file_dir = empty(expand('%:p')) ? '' : expand('%:p:h')
+    let l:tagfiles = exists('*tagfiles') ? tagfiles() : []
+    let l:lines = [
+        \ 'Corporate-Safe Vim Tags Health',
+        \ '',
+        \ 'Tags option: ' . &tags,
+        \ 'Current file: ' . (empty(expand('%:p')) ? '[no file]' : fnamemodify(expand('%:p'), ':.')),
+        \ 'Current file upward tags: ' . (empty(l:file_dir) ? '[no file]' : (empty(s:FindUpwardTags(l:file_dir)) ? 'not found' : fnamemodify(s:FindUpwardTags(l:file_dir), ':.'))),
+        \ 'Working directory upward tags: ' . (empty(s:FindUpwardTags(getcwd())) ? 'not found' : fnamemodify(s:FindUpwardTags(getcwd()), ':.')),
+        \ '',
+        \ 'Resolved tag files',
+        \ ]
+    if empty(l:tagfiles)
+        call add(l:lines, '  none resolved yet')
+    else
+        for l:file in l:tagfiles
+            call add(l:lines, '  ' . fnamemodify(l:file, ':.'))
+        endfor
+    endif
+    call extend(l:lines, [
+        \ '',
+        \ 'Usage',
+        \ '  Space ft or :CorporateSafeTag {name} jumps through existing tags.',
+        \ '  This vimrc does not generate tags; use an approved ctags tool if your workplace allows it.',
+        \ '',
+        \ 'Press q to close this report.',
+        \ ])
+    call s:ShowLegacyScratch('Corporate-Safe-Tags-Health', l:lines)
+endfunction
+
 function! s:LegacyTagJump(arg) abort
     let l:symbol = s:LegacyResolveSymbol(a:arg, 'Tag symbol')
     if empty(l:symbol)
@@ -971,13 +1385,23 @@ command! -nargs=? CorporateSafeDefinitions call <SID>LegacyDefinitions(<q-args>)
 command! -nargs=? CorporateSafeReferences call <SID>LegacyReferences(<q-args>)
 command! -nargs=? CorporateSafeCallers call <SID>LegacyReferences(<q-args>)
 command! -nargs=? CorporateSafeFlow call <SID>LegacyFlow(<q-args>)
+command! CorporateSafeOutgoing call <SID>LegacyOutgoingCalls()
+command! -nargs=? CorporateSafeInspect call <SID>LegacyInspect(<q-args>)
+command! -nargs=? CorporateSafeTodos call <SID>LegacyTodos(<q-args>)
+command! -nargs=? CorporateSafeHotspots call <SID>LegacyHotspots(<q-args>)
 command! -nargs=? CorporateSafeTag call <SID>LegacyTagJump(<q-args>)
+command! CorporateSafeTagsHealth call <SID>LegacyTagsHealth()
 
 nnoremap <leader>fo :call <SID>LegacyOutline()<CR>
 nnoremap <leader>fd :call <SID>LegacyDefinitions('')<CR>
 nnoremap <leader>fc :call <SID>LegacyReferences('')<CR>
 nnoremap <leader>fF :call <SID>LegacyFlow('')<CR>
+nnoremap <leader>fO :call <SID>LegacyOutgoingCalls()<CR>
+nnoremap <leader>fI :call <SID>LegacyInspect('')<CR>
+nnoremap <leader>fT :call <SID>LegacyTodosPrompt()<CR>
+nnoremap <leader>fh :call <SID>LegacyHotspotsPrompt()<CR>
 nnoremap <leader>ft :call <SID>LegacyTagJump('')<CR>
+nnoremap <leader>fH :call <SID>LegacyTagsHealth()<CR>
 
 " ----------------------------------------------------------
 " Git workflow (optional, stock Vim wrapper around git)

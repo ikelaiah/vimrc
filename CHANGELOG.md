@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here.
 
+## [1.3.0] - 2026-05-04
+
+### Added
+
+- Added outgoing-call quickfix navigation for the current function with `Space fO` / `:CorporateSafeOutgoing`.
+- Added a legacy symbol inspection report with `Space fI` / `:CorporateSafeInspect`.
+- Added TODO marker and legacy hotspot quickfix scans with `Space fT`, `Space fh`, `:CorporateSafeTodos`, and `:CorporateSafeHotspots`.
+- Expanded legacy outline and definition heuristics for Perl, PowerShell, T-SQL, COBOL, and ABAP-style files.
+- Added `:CorporateSafeTagsHealth` / `Space fH` for tags-file discovery diagnostics.
+- Added a README tutorial for inspecting legacy code and triaging issues without AI tooling.
+
 ## [1.2.0] - 2026-05-04
 
 ### Added

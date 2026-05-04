@@ -144,13 +144,26 @@ jobs:
 
           cat > build-temp/check-legacy-navigation.vim <<'VIM'
           set nomore
-          let g:corporate_safe_legacy_glob = 'demo/*.py'
-          edit demo/example.py
+          call writefile([
+            \ 'def round_money(amount):',
+            \ '    return round(amount, 2)',
+            \ '',
+            \ 'def calculate_total(price, tax_rate):',
+            \ '    # TODO: verify legacy rounding',
+            \ '    password = "demo"',
+            \ '    subtotal = price * tax_rate',
+            \ '    eval("1 + 1")',
+            \ '    return round_money(price + subtotal)',
+            \ '',
+            \ 'total = calculate_total(120, 0.1)',
+            \ ], 'build-temp/legacy-flow.py')
+          let g:corporate_safe_legacy_glob = 'build-temp/legacy-flow.py'
+          edit build-temp/legacy-flow.py
           CorporateSafeOutline
-          if len(getqflist()) < 1
+          if len(getqflist()) < 2
             cquit
           endif
-          if getqflist()[0].text !~# 'calculate_total'
+          if getqflist()[1].text !~# 'calculate_total'
             cquit
           endif
           CorporateSafeDefinitions calculate_total
@@ -175,6 +188,44 @@ jobs:
             endif
           endfor
           if !s:has_definition || !s:has_reference
+            cquit
+          endif
+          call cursor(8, 8)
+          CorporateSafeOutgoing
+          if len(getqflist()) < 1
+            cquit
+          endif
+          let s:has_round_money = 0
+          for s:item in getqflist()
+            if s:item.text =~# 'round_money'
+              let s:has_round_money = 1
+            endif
+          endfor
+          if !s:has_round_money
+            cquit
+          endif
+          call cursor(8, 8)
+          CorporateSafeInspect calculate_total
+          if bufname('%') !=# 'Corporate-Safe-Legacy-Inspection'
+            cquit
+          endif
+          if search('Current context: python calculate_total', 'n') == 0
+            cquit
+          endif
+          if search('Likely outgoing calls', 'n') == 0
+            cquit
+          endif
+          bwipeout!
+          CorporateSafeTodos build-temp/legacy-flow.py
+          if len(getqflist()) < 1 || getqflist()[0].text !~# 'TODO'
+            cquit
+          endif
+          CorporateSafeHotspots build-temp/legacy-flow.py
+          if len(getqflist()) < 2
+            cquit
+          endif
+          CorporateSafeTagsHealth
+          if bufname('%') !=# 'Corporate-Safe-Tags-Health'
             cquit
           endif
           autocmd! Session

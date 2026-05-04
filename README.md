@@ -5,7 +5,7 @@
 </p>
 
 ![Vim 8+](https://img.shields.io/badge/Vim-8%2B-brightgreen)
-![Version](https://img.shields.io/badge/version-1.2.0-informational)
+![Version](https://img.shields.io/badge/version-1.3.0-informational)
 [![Vimrc Smoke Test](https://github.com/ikelaiah/vimrc/actions/workflows/vimrc-smoke.yml/badge.svg)](https://github.com/ikelaiah/vimrc/actions/workflows/vimrc-smoke.yml)
 ![Made with Vim](https://img.shields.io/badge/Made%20with-Vim-019733)
 ![Plugins](https://img.shields.io/badge/plugins-none-blue)
@@ -22,7 +22,7 @@ Optional Git workflow mappings call your installed `git` executable only when yo
 
 Just **stock Vim features used effectively**.
 
-Current release: **1.2.0**. See [CHANGELOG.md](CHANGELOG.md).
+Current release: **1.3.0**. See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -81,8 +81,10 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Configurable deep file search and default project-search glob
 - [x] Search word under cursor across the project
 - [x] Current-file function/class outline for legacy code
-- [x] Symbol definition, reference, caller, and flow quickfix views using stock Vim search
-- [x] Optional tags-file jump support through Vim's built-in tag commands
+- [x] Symbol definition, reference, caller, outgoing-call, and flow quickfix views using stock Vim search
+- [x] Legacy inspection report for definitions, references, current context, and likely callees
+- [x] TODO marker and hotspot quickfix views for issue discovery
+- [x] Optional tags-file jump support and tags health report through Vim's built-in tag commands
 - [x] Optional stock-Vim Git workflow mappings for status, changed files, diff, log, blame, staging, commit, push, pull, and restore
 - [x] Git changed-files quickfix list for jumping through work-in-progress files
 - [x] In-editor shortcut cheatsheet
@@ -312,11 +314,18 @@ These mappings are intentionally heuristic. They are meant to help you orient yo
 | Likely definition for a symbol | `Space fd` or `:CorporateSafeDefinitions {name}` |
 | Callers/references for a symbol | `Space fc` or `:CorporateSafeReferences {name}` |
 | Combined symbol flow | `Space fF` or `:CorporateSafeFlow {name}` |
+| Outgoing calls from current function | `Space fO` or `:CorporateSafeOutgoing` |
+| Symbol inspection report | `Space fI` or `:CorporateSafeInspect {name}` |
+| TODO/FIXME/HACK/BUG markers | `Space fT` or `:CorporateSafeTodos {glob}` |
+| Legacy hotspot patterns | `Space fh` or `:CorporateSafeHotspots {glob}` |
 | Jump/select from an existing tags file | `Space ft` or `:CorporateSafeTag {name}` |
+| Tags health report | `Space fH` or `:CorporateSafeTagsHealth` |
 
-`Space fo` scans the current buffer for common function, method, class, procedure, subroutine, shell-function, SQL routine, JavaScript arrow/property, Go, Python, VB-style, and C-like definitions, then loads the outline into quickfix.
+`Space fo` scans the current buffer for common function, method, class, procedure, subroutine, shell-function, SQL routine, JavaScript arrow/property, Go, Python, Perl, PowerShell, VB-style, COBOL, ABAP, and C-like definitions, then loads the outline into quickfix.
 
-`Space fd`, `Space fc`, and `Space fF` prompt for a symbol and file glob. The matching commands use the configured default glob when you pass `{name}`. `Space fF` puts likely definitions first and then references, so `]q` and `[q` can step through a rough flow for the function under investigation.
+`Space fd`, `Space fc`, and `Space fF` prompt for a symbol and file glob. The matching commands use the configured default glob when you pass `{name}`. `Space fF` puts likely definitions first and then references, so `]q` and `[q` can step through a rough flow for the function under investigation. `Space fO` works from the function under your cursor and lists likely callees in quickfix. `Space fI` opens a read-only report with likely definitions, references, current context, and outgoing calls.
+
+`Space fT` searches for comment markers such as `TODO`, `FIXME`, `HACK`, and `BUG`. `Space fh` searches for common legacy risk patterns such as hardcoded secrets, dynamic evaluation, shell execution, SQL strings, disabled SSL verification, debug leftovers, broad catches, and unsafe temp-file usage. These are triage aids, not proof of a defect.
 
 The default glob is configurable separately from normal project search:
 
@@ -325,6 +334,19 @@ let g:corporate_safe_legacy_glob = 'src/**/*'
 ```
 
 Vim tag navigation is enabled with `set tags=./tags;,tags;`, so Vim searches for `tags` files from the current file upward. This configuration does not require or generate ctags; `Space ft` only becomes useful if your environment already provides an approved tags file.
+
+#### Legacy Investigation Tutorial
+
+Use this workflow when you inherit a file and need to understand or inspect it without AI tools, plugins, or language servers:
+
+1. Open the file and run `Space fo` to build a function/class outline. Use `]q` and `[q` to jump between likely entry points.
+2. Put the cursor on a suspicious function name and run `Space fI`. The report gives you likely definitions, references/callers, the current function context, and likely outgoing calls.
+3. From inside a function, run `Space fO` to list what it calls. Jump to each callee with `]q`, then run `Space fd` on names that need deeper inspection.
+4. Run `Space fT` across a narrow glob such as `src/**/*.php` or `app/**/*.sql` to find stale TODOs, workarounds, and known-risk comments.
+5. Run `Space fh` with the same narrow glob to find legacy hotspots. Inspect each result manually; treat matches as review prompts.
+6. If a `tags` file exists, run `Space fH` to verify Vim can see it, then use `Space ft` for more precise jumps.
+
+Keep the glob narrow in very large repositories. Start with the subsystem you are investigating, then broaden only when the result set is manageable.
 
 ---
 
