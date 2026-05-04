@@ -1961,7 +1961,7 @@ function! s:StatuslineEncoding() abort
     return empty(&fileencoding) ? &encoding : &fileencoding
 endfunction
 
-set statusline=%f\ %m%r\ [%Y]\ %{<SID>StatuslineEncoding()}\ %{&fileformat}\ %=%l:%c\ (%p%%)
+execute 'set statusline=%f\ %m%r\ [%Y]\ %{'.expand('<SID>').'StatuslineEncoding()}\ %{&fileformat}\ %=%l:%c\ (%p%%)'
 
 " ----------------------------------------------------------
 " Sessions
