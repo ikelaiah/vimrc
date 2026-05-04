@@ -1781,7 +1781,11 @@ nnoremap <leader>z :set wrap!<CR>
 " ----------------------------------------------------------
 " Statusline
 " ----------------------------------------------------------
-set statusline=%f\ %m%r\ [%Y]\ %=%l:%c\ (%p%%)
+function! s:StatuslineEncoding() abort
+    return empty(&fileencoding) ? &encoding : &fileencoding
+endfunction
+
+set statusline=%f\ %m%r\ [%Y]\ %{<SID>StatuslineEncoding()}\ %{&fileformat}\ %=%l:%c\ (%p%%)
 
 " ----------------------------------------------------------
 " Sessions
