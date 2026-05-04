@@ -5,7 +5,7 @@
 </p>
 
 ![Vim 8+](https://img.shields.io/badge/Vim-8%2B-brightgreen)
-![Version](https://img.shields.io/badge/version-1.3.0-informational)
+![Version](https://img.shields.io/badge/version-1.4.0-informational)
 [![Vimrc Smoke Test](https://github.com/ikelaiah/vimrc/actions/workflows/vimrc-smoke.yml/badge.svg)](https://github.com/ikelaiah/vimrc/actions/workflows/vimrc-smoke.yml)
 ![Made with Vim](https://img.shields.io/badge/Made%20with-Vim-019733)
 ![Plugins](https://img.shields.io/badge/plugins-none-blue)
@@ -22,7 +22,7 @@ Optional Git workflow mappings call your installed `git` executable only when yo
 
 Just **stock Vim features used effectively**.
 
-Current release: **1.3.0**. See [CHANGELOG.md](CHANGELOG.md).
+Current release: **1.4.0**. See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -61,6 +61,7 @@ In this repository, **corporate-safe** means a deliberately small approval footp
 - no package-managed dependencies
 - no Python, Node, ripgrep, ctags, or other external helper tools required for startup, editing, search, or sessions
 - stock Vim features only
+- project-controlled modelines and local vimrc/exrc files disabled by default
 
 The Git workflow commands are optional wrappers around an installed `git` executable. They do not run at startup and are unavailable gracefully when `git` is not on `PATH`.
 
@@ -76,16 +77,18 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Truecolor support
 - [x] Gruvbox fallback to Desert
 - [x] Early UTF-8 encoding setup for portable whitespace markers
+- [x] Project-controlled modelines and local vimrc/exrc files disabled by default
 - [x] Sidebar file explorer that toggles cleanly from any buffer
 - [x] Prompted project search using `vimgrep` with file-glob scoping
 - [x] Configurable deep file search and default project-search glob
 - [x] Search word under cursor across the project
+- [x] Quickfix next/previous, open/close, auto-open, and history navigation helpers
 - [x] Current-file function/class outline for legacy code
 - [x] Symbol definition, reference, caller, outgoing-call, and flow quickfix views using stock Vim search
 - [x] Legacy inspection report for definitions, references, current context, and likely callees
 - [x] TODO marker and hotspot quickfix views for issue discovery
 - [x] Optional tags-file jump support and tags health report through Vim's built-in tag commands
-- [x] Optional stock-Vim Git workflow mappings for status, changed files, diff, log, blame, staging, commit, push, pull, and restore
+- [x] Optional stock-Vim Git workflow mappings for status, changed files, diff, staged diff, log, blame, staging, unstaging, commit, push, pull, and restore
 - [x] Git changed-files quickfix list for jumping through work-in-progress files
 - [x] In-editor shortcut cheatsheet
 - [x] In-editor health report for locked-down workstation debugging
@@ -93,8 +96,9 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Toggleable whitespace visibility (tabs, trailing spaces, nbsp)
 - [x] Toggleable relative line numbers, off by default
 - [x] File-local working directory shortcut
-- [x] Guarded system clipboard yank/paste mappings
+- [x] Explicit system clipboard yank/paste mappings when Vim supports clipboard integration
 - [x] Brief yank highlighting using built-in Vim match/timer support
+- [x] Manual trailing-whitespace cleanup command
 - [x] No automatic comment continuation when opening a new line with `o`
 - [x] Language-aware indentation (consistent tabstop/shiftwidth/softtabstop per filetype)
 - [x] Count-aware `j`/`k` motion (works with `5j`, `10k`, etc.)
@@ -109,7 +113,8 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Safer truecolor probing for terminals that expose the option but cannot enable it
 - [x] Safer prompted project search that rejects command separators in file globs
 - [x] Quickfix next/previous mappings with readable boundary errors
-- [x] CI smoke tests for sourcing, relative-number toggle, netrw toggle, sessions, legacy navigation, health output, and policy opt-outs
+- [x] Large-file mode that disables expensive buffer-local UI features above a configurable size
+- [x] CI smoke tests for sourcing, editing helpers, relative-number toggle, netrw toggle, sessions, legacy navigation, health output, and policy opt-outs
 
 Vim's built-in filetype detection handles many languages. This configuration only adds a small set of indentation defaults where they improve day-to-day editing.
 
@@ -279,6 +284,9 @@ Space ?
 | Previous result          | `[q`       |
 | Open results             | `Space co` |
 | Close results            | `Space cc` |
+| Open results if non-empty | `Space cw` |
+| Newer quickfix list      | `Space cn` |
+| Older quickfix list      | `Space cp` |
 
 Example:
 
@@ -359,10 +367,13 @@ Git support is plugin-free and optional. Vim starts normally without `git`; the 
 | Status | `Space Gs` or `:Git` |
 | Changed files in quickfix | `Space Gq` |
 | Diff current file | `Space Gd` |
+| Staged diff current file | `Space GD` |
 | Recent repository log | `Space Gl` |
 | Blame current file | `Space Gb` |
 | Stage current file | `Space Ga` |
-| Stage all changes | `Space GA` |
+| Stage all changes with confirmation | `Space GA` |
+| Unstage current file | `Space Gu` |
+| Unstage all changes with confirmation | `Space GU` |
 | Commit staged changes with a message prompt | `Space Gc` |
 | Push | `Space Gp` |
 | Pull fast-forward only | `Space GP` |
@@ -377,7 +388,7 @@ Examples:
 :Git log --oneline --decorate -10
 ```
 
-Git status, diff, log, blame, stage, commit, and restore output opens in a read-only scratch buffer. Press `q` in that buffer to close it. `Space Gq` loads changed files into the quickfix list so `]q` and `[q` can jump through your current work.
+Git status, diff, staged diff, log, blame, stage, unstage, commit, and restore output opens in a read-only scratch buffer. Press `q` in that buffer to close it. `Space Gq` loads changed files into the quickfix list so `]q` and `[q` can jump through your current work.
 
 For ad hoc `:Git {args}` commands, shell pipes, redirects, command substitution, and command separators are rejected; use a normal shell for those.
 
@@ -427,7 +438,6 @@ Space ← → ↑ ↓
 | Save                          | `Space w` |
 | Quit (prompts if unsaved)     | `Space q` |
 | Save & quit                   | `Space x` |
-| Force quit (discard changes)  | `Space Q` |
 
 ---
 
@@ -474,7 +484,6 @@ The recommended ways to exit, from most to least cautious:
 | Save and quit                 | `:wq`      | Always writes, then quits            |
 | Quit with prompt if unsaved   | `Space q`  | Prompts Save/Discard/Cancel          |
 | Quit (no unsaved changes)     | `:q`       | Quits if buffer is clean             |
-| Force quit, discard changes   | `Space Q`  | Discards all changes, no prompt      |
 | Force quit                    | `:q!`      | Discards unsaved changes, then quits |
 | Quit all windows              | `:qa`      | Quits all windows (fails if unsaved) |
 | Quit all, discard all changes | `:qa!`     | Force-quits everything               |
@@ -506,6 +515,12 @@ Toggle wrap:
 Space z
 ```
 
+Trim trailing whitespace in the current buffer:
+
+```text
+Space tw
+```
+
 Toggle relative line numbers:
 
 ```text
@@ -522,9 +537,22 @@ Trailing whitespace markers are visible when whitespace markers are enabled, but
 
 Yanked text is briefly highlighted when the running Vim supports `TextYankPost`, `matchaddpos()`, and timers.
 
-When Vim has clipboard support, `Space y` yanks to the system clipboard and `Space p` pastes from it.
+When Vim has clipboard support, `Space y` yanks to the system clipboard and `Space p` pastes from it. Normal yanks stay in Vim registers by default. To restore automatic system clipboard integration, opt in explicitly:
+
+```vim
+let g:corporate_safe_auto_clipboard = 1
+```
 
 Opening a new line with `o` does not automatically continue comment leaders.
+
+Project-controlled modelines and local `.vimrc` / `.exrc` loading are disabled by default.
+
+Large-file mode disables syntax, folds, wrap, and whitespace markers for files larger than 2 MiB. To change or disable that threshold:
+
+```vim
+let g:corporate_safe_large_file_bytes = 5242880
+let g:corporate_safe_large_file_bytes = 0
+```
 
 ---
 
@@ -536,7 +564,7 @@ Open a stock-Vim health report:
 :CorporateSafeHealth
 ```
 
-The report shows the config version, Vim version, plugin/external-tool requirements, optional Git availability, feature support, runtime directory status, local-state mode, project/session paths, netrw availability, auto-session state, session save/restore status, deep-find settings, default search glob, and key mappings.
+The report shows the config version, Vim version, plugin/external-tool requirements, optional Git availability, feature support, file-trust settings, runtime directory status, local-state mode, project/session paths, netrw availability, auto-session state, session save/restore status, deep-find settings, default search glob, large-file threshold, and key mappings.
 
 ---
 
@@ -560,7 +588,7 @@ Navigation should be faster than thinking.
 
 ## CI Smoke Test
 
-The GitHub Actions workflow runs `.vimrc` with Vim in Ex mode and isolated `HOME` directories. It catches syntax errors, runtime directory regressions, line-ending regressions, relative-number toggle regressions, netrw sidebar toggle regressions, session save/restore regressions, legacy-navigation regressions, optional Git-command regressions, health-report regressions, and opt-out regressions without installing runtime plugins.
+The GitHub Actions workflow runs `.vimrc` with Vim in Ex mode and isolated `HOME` directories. It catches syntax errors, runtime directory regressions, line-ending regressions, editing-helper regressions, relative-number toggle regressions, netrw sidebar toggle regressions, session save/restore regressions, legacy-navigation regressions, optional Git-command regressions, health-report regressions, and opt-out regressions without installing runtime plugins.
 
 ---
 

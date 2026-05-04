@@ -8,12 +8,14 @@ if has('multi_byte')
     set encoding=utf-8
     set fileencodings=utf-8,default,latin1
 endif
-let g:corporate_safe_vim_version = '1.3.0'
+let g:corporate_safe_vim_version = '1.4.0'
 let g:corporate_safe_auto_sessions = get(g:, 'corporate_safe_auto_sessions', 1)
 let g:corporate_safe_deep_find = get(g:, 'corporate_safe_deep_find', 1)
 let g:corporate_safe_search_glob = get(g:, 'corporate_safe_search_glob', '**/*')
 let g:corporate_safe_legacy_glob = get(g:, 'corporate_safe_legacy_glob', get(g:, 'corporate_safe_search_glob', '**/*'))
 let g:corporate_safe_no_local_state = get(g:, 'corporate_safe_no_local_state', 0)
+let g:corporate_safe_auto_clipboard = get(g:, 'corporate_safe_auto_clipboard', 0)
+let g:corporate_safe_large_file_bytes = get(g:, 'corporate_safe_large_file_bytes', 2097152)
 filetype plugin indent on
 syntax on
 
@@ -21,6 +23,13 @@ syntax on
 " Leader key (must be set before any mappings)
 " ----------------------------------------------------------
 let mapleader=" "
+
+" ----------------------------------------------------------
+" File trust safety
+" ----------------------------------------------------------
+set noexrc
+set nomodeline
+set modelines=0
 
 " ==========================================================
 " Ensure vim directories exist
@@ -100,6 +109,16 @@ if exists('&signcolumn')
     set signcolumn=yes
 endif
 
+set backspace=indent,eol,start
+set confirm
+set nostartofline
+if exists('&breakindent')
+    set breakindent
+endif
+if exists('&virtualedit')
+    set virtualedit=block
+endif
+
 set ruler
 set showcmd
 set showmode
@@ -157,10 +176,11 @@ set formatoptions-=o
 augroup FileTypeSettings
     autocmd!
     autocmd FileType * setlocal formatoptions-=o
-    autocmd FileType javascript,css,json,yaml,toml,lua setlocal tabstop=2 shiftwidth=2 softtabstop=2
+    autocmd FileType javascript,javascriptreact,typescript,typescriptreact,css,scss,sass,less,html,xml,json,yaml,toml,lua,vue,svelte setlocal tabstop=2 shiftwidth=2 softtabstop=2
     autocmd FileType markdown setlocal wrap linebreak colorcolumn=0
     autocmd FileType help setlocal colorcolumn=0 nolist
     autocmd FileType make setlocal noexpandtab
+    autocmd FileType go setlocal noexpandtab tabstop=4 shiftwidth=4 softtabstop=0
 augroup END
 
 " ----------------------------------------------------------
@@ -188,7 +208,9 @@ set wildignore+=*/target/*
 " Clipboard
 " ----------------------------------------------------------
 if has("clipboard")
-    set clipboard=unnamed,unnamedplus
+    if get(g:, 'corporate_safe_auto_clipboard', 0)
+        set clipboard=unnamed,unnamedplus
+    endif
     nnoremap <leader>y "+y
     vnoremap <leader>y "+y
     nnoremap <leader>p "+p
@@ -222,6 +244,41 @@ set autoread
 augroup AutoRead
     autocmd!
     autocmd FocusGained,BufEnter * checktime
+augroup END
+
+function! s:MaybeApplyLargeFileMode() abort
+    let l:already_applied = get(b:, 'corporate_safe_large_file_applied', 0)
+    let l:limit = get(g:, 'corporate_safe_large_file_bytes', 2097152)
+    if l:limit <= 0
+        return
+    endif
+    let l:file = expand('<afile>:p')
+    if empty(l:file)
+        let l:file = expand('%:p')
+    endif
+    let l:size = getfsize(l:file)
+    if l:size <= l:limit
+        return
+    endif
+
+    let b:corporate_safe_large_file = 1
+    let b:corporate_safe_large_file_applied = 1
+    setlocal nolist nowrap
+    if exists('&syntax')
+        setlocal syntax=OFF
+    endif
+    if exists('&foldmethod')
+        setlocal foldmethod=manual
+    endif
+    if !l:already_applied
+        echom 'Large file mode: disabled syntax, folds, wrap, and listchars for ' . fnamemodify(l:file, ':~')
+    endif
+endfunction
+
+augroup LargeFileMode
+    autocmd!
+    autocmd BufReadPost * call s:MaybeApplyLargeFileMode()
+    autocmd FileType * call s:MaybeApplyLargeFileMode()
 augroup END
 
 augroup NoLocalState
@@ -268,6 +325,8 @@ function! s:ShowHelp() abort
         \ '  ]q / [q      next / previous quickfix result',
         \ '  <Space>co    open quickfix',
         \ '  <Space>cc    close quickfix',
+        \ '  <Space>cw    open quickfix only when it has entries',
+        \ '  <Space>cn/cp newer / older quickfix list',
         \ '',
         \ 'Legacy Code',
         \ '  <Space>fo    current file function/class outline',
@@ -285,10 +344,13 @@ function! s:ShowHelp() abort
         \ '  <Space>Gs    git status',
         \ '  <Space>Gq    changed files in quickfix',
         \ '  <Space>Gd    diff current file',
+        \ '  <Space>GD    staged diff for current file',
         \ '  <Space>Gl    recent log',
         \ '  <Space>Gb    blame current file',
         \ '  <Space>Ga    stage current file',
-        \ '  <Space>GA    stage all changes',
+        \ '  <Space>GA    stage all changes with confirmation',
+        \ '  <Space>Gu    unstage current file',
+        \ '  <Space>GU    unstage all changes with confirmation',
         \ '  <Space>Gc    commit staged changes with message prompt',
         \ '  <Space>Gp    push',
         \ '  <Space>GP    pull --ff-only',
@@ -309,6 +371,7 @@ function! s:ShowHelp() abort
         \ '  <Space>q     quit with prompt',
         \ '  <Space>/     clear search highlight',
         \ '  <Space>l     toggle whitespace markers',
+        \ '  <Space>tw    trim trailing whitespace in current file',
         \ '  <Space>rn    toggle relative line numbers',
         \ '  <Space>z     toggle wrap',
         \ '  <Space>y/p   system clipboard when supported',
@@ -386,6 +449,8 @@ function! s:MappingLines() abort
         \ '    ]q / [q         next / previous quickfix result',
         \ '    <Space>co       open quickfix',
         \ '    <Space>cc       close quickfix',
+        \ '    <Space>cw       open quickfix only when it has entries',
+        \ '    <Space>cn/cp    newer / older quickfix list',
         \ '',
         \ '  Legacy Code',
         \ '    <Space>fo       current file function/class outline',
@@ -403,10 +468,13 @@ function! s:MappingLines() abort
         \ '    <Space>Gs       git status',
         \ '    <Space>Gq       changed files in quickfix',
         \ '    <Space>Gd       diff current file',
+        \ '    <Space>GD       staged diff for current file',
         \ '    <Space>Gl       recent log',
         \ '    <Space>Gb       blame current file',
         \ '    <Space>Ga       stage current file',
-        \ '    <Space>GA       stage all changes',
+        \ '    <Space>GA       stage all changes with confirmation',
+        \ '    <Space>Gu       unstage current file',
+        \ '    <Space>GU       unstage all changes with confirmation',
         \ '    <Space>Gc       commit staged changes with message prompt',
         \ '    <Space>Gp       push',
         \ '    <Space>GP       pull --ff-only',
@@ -428,9 +496,9 @@ function! s:MappingLines() abort
         \ '    <Space>w        save',
         \ '    <Space>x        save and quit',
         \ '    <Space>q        quit with prompt',
-        \ '    <Space>Q        force quit',
         \ '    <Space>/        clear search highlight',
         \ '    <Space>l        toggle whitespace markers',
+        \ '    <Space>tw       trim trailing whitespace in current file',
         \ '    <Space>rn       toggle relative line numbers',
         \ '    <Space>z        toggle wrap',
         \ '    j/k             move by display lines without a count',
@@ -472,6 +540,7 @@ function! s:ShowHealth() abort
         \ 'Features',
         \ '  Clipboard: ' . s:YesNo(has('clipboard')),
         \ '  Clipboard mappings: ' . s:ClipboardMappingStatus(),
+        \ '  Automatic clipboard: ' . s:YesNo(has('clipboard') && get(g:, 'corporate_safe_auto_clipboard', 0)),
         \ '  Git executable (optional): ' . s:GitExecutableStatus(),
         \ '  Git repository: ' . s:GitRootStatus(),
         \ '  Truecolor option: ' . s:YesNo(exists('&termguicolors')),
@@ -480,9 +549,12 @@ function! s:ShowHealth() abort
         \ '  TextYankPost: ' . s:YesNo(exists('##TextYankPost')),
         \ '  Timers: ' . s:YesNo(exists('*timer_start')),
         \ '  SHA-256: ' . s:YesNo(exists('*sha256')),
+        \ '  Modelines enabled: ' . s:YesNo(&modeline),
+        \ '  Local vimrc enabled: ' . s:YesNo(&exrc),
         \ '  Deep :find path: ' . s:YesNo(get(g:, 'corporate_safe_deep_find', 1)),
         \ '  Default search glob: ' . get(g:, 'corporate_safe_search_glob', '**/*'),
         \ '  Default legacy glob: ' . get(g:, 'corporate_safe_legacy_glob', get(g:, 'corporate_safe_search_glob', '**/*')),
+        \ '  Large file limit bytes: ' . get(g:, 'corporate_safe_large_file_bytes', 2097152),
         \ '  Tags search path: ' . &tags,
         \ '  Local state writes: ' . s:LocalStateStatus(),
         \ '  Vim info file: ' . s:VimInfoStatus(),
@@ -530,7 +602,6 @@ command! CorporateSafeHealth call <SID>ShowHealth()
 nnoremap <leader>w :write<CR>
 nnoremap <leader>q :confirm quit<CR>
 nnoremap <leader>x :xit<CR>
-nnoremap <leader>Q :quit!<CR>
 
 " ----------------------------------------------------------
 " Buffers
@@ -618,6 +689,14 @@ function! s:SearchGlobSafe(glob) abort
     return 1
 endfunction
 
+function! s:SetQuickfixList(items, title) abort
+    try
+        call setqflist(a:items, 'r', {'title': a:title})
+    catch
+        call setqflist(a:items, 'r')
+    endtry
+endfunction
+
 function! s:ProjectGrep(pattern, glob) abort
     let l:pattern = a:pattern
     if empty(l:pattern)
@@ -643,6 +722,7 @@ function! s:ProjectGrep(pattern, glob) abort
         return
     endtry
 
+    call s:SetQuickfixList(getqflist(), 'Project search: ' . l:pattern . ' in ' . l:glob)
     copen
     wincmd p
     echom 'Project matches: ' . len(getqflist()) . ' in ' . l:glob
@@ -709,11 +789,37 @@ function! s:QuickfixStep(direction) abort
     endtry
 endfunction
 
+function! s:QuickfixWindow() abort
+    if empty(getqflist())
+        echo 'Quickfix list is empty'
+        return
+    endif
+    cwindow
+endfunction
+
+function! s:QuickfixHistory(direction) abort
+    try
+        if a:direction > 0
+            cnewer
+        else
+            colder
+        endif
+        cwindow
+    catch
+        echohl WarningMsg
+        echom v:exception
+        echohl None
+    endtry
+endfunction
+
 nnoremap ]q :call <SID>QuickfixStep(1)<CR>
 nnoremap [q :call <SID>QuickfixStep(-1)<CR>
 
 nnoremap <leader>co :copen<CR>
 nnoremap <leader>cc :cclose<CR>
+nnoremap <leader>cw :call <SID>QuickfixWindow()<CR>
+nnoremap <leader>cn :call <SID>QuickfixHistory(1)<CR>
+nnoremap <leader>cp :call <SID>QuickfixHistory(-1)<CR>
 
 " ----------------------------------------------------------
 " Legacy code navigation (pure Vim heuristics)
@@ -1098,7 +1204,7 @@ function! s:CollectLegacyPatternItems(specs, glob, type) abort
 endfunction
 
 function! s:ShowQuickfixItems(items, title, empty_message) abort
-    call setqflist(a:items, 'r')
+    call s:SetQuickfixList(a:items, a:title)
     if empty(a:items)
         cclose
         echom a:empty_message
@@ -1605,7 +1711,7 @@ function! s:GitChangedFiles() abort
             \ })
     endfor
 
-    call setqflist(l:items, 'r')
+    call s:SetQuickfixList(l:items, 'Git changed files')
     if empty(l:items)
         cclose
         echom 'No changed git files.'
@@ -1620,6 +1726,14 @@ function! s:GitDiffFile() abort
         return
     endif
     call s:GitOutput('diff -- ' . shellescape(l:file), 'Diff')
+endfunction
+
+function! s:GitDiffStagedFile() abort
+    let l:file = s:GitRelativeFile()
+    if empty(l:file)
+        return
+    endif
+    call s:GitOutput('diff --staged -- ' . shellescape(l:file), 'Staged-Diff')
 endfunction
 
 function! s:GitLog() abort
@@ -1643,7 +1757,27 @@ function! s:GitStageFile() abort
 endfunction
 
 function! s:GitStageAll() abort
+    if confirm('Stage all git changes?', "&Stage all\n&Cancel", 2) != 1
+        echo 'Stage all cancelled'
+        return
+    endif
     call s:GitOutput('add -A', 'Stage-All')
+endfunction
+
+function! s:GitUnstageFile() abort
+    let l:file = s:GitRelativeFile()
+    if empty(l:file)
+        return
+    endif
+    call s:GitOutput('restore --staged -- ' . shellescape(l:file), 'Unstage-File')
+endfunction
+
+function! s:GitUnstageAll() abort
+    if confirm('Unstage all git changes?', "&Unstage all\n&Cancel", 2) != 1
+        echo 'Unstage all cancelled'
+        return
+    endif
+    call s:GitOutput('restore --staged .', 'Unstage-All')
 endfunction
 
 function! s:GitCommitPrompt() abort
@@ -1686,8 +1820,15 @@ command! -nargs=* CorporateSafeGit call <SID>GitCommand(<q-args>)
 command! CorporateSafeGitStatus call <SID>GitStatus()
 command! CorporateSafeGitChangedFiles call <SID>GitChangedFiles()
 command! CorporateSafeGitDiff call <SID>GitDiffFile()
+command! CorporateSafeGitStagedDiff call <SID>GitDiffStagedFile()
 command! CorporateSafeGitLog call <SID>GitLog()
 command! CorporateSafeGitBlame call <SID>GitBlameFile()
+command! CorporateSafeGitStage call <SID>GitStageFile()
+command! CorporateSafeGitStageAll call <SID>GitStageAll()
+command! CorporateSafeGitUnstage call <SID>GitUnstageFile()
+command! CorporateSafeGitUnstageAll call <SID>GitUnstageAll()
+command! CorporateSafeGitCommit call <SID>GitCommitPrompt()
+command! CorporateSafeGitRestore call <SID>GitRestoreFile()
 
 if exists(':Git') != 2 || get(g:, 'corporate_safe_git_command_owner', '') ==# 'corporate-safe-vim'
     command! -nargs=* Git call <SID>GitCommand(<q-args>)
@@ -1697,10 +1838,13 @@ endif
 nnoremap <silent> <leader>Gs :call <SID>GitStatus()<CR>
 nnoremap <silent> <leader>Gq :call <SID>GitChangedFiles()<CR>
 nnoremap <silent> <leader>Gd :call <SID>GitDiffFile()<CR>
+nnoremap <silent> <leader>GD :call <SID>GitDiffStagedFile()<CR>
 nnoremap <silent> <leader>Gl :call <SID>GitLog()<CR>
 nnoremap <silent> <leader>Gb :call <SID>GitBlameFile()<CR>
 nnoremap <silent> <leader>Ga :call <SID>GitStageFile()<CR>
 nnoremap <silent> <leader>GA :call <SID>GitStageAll()<CR>
+nnoremap <silent> <leader>Gu :call <SID>GitUnstageFile()<CR>
+nnoremap <silent> <leader>GU :call <SID>GitUnstageAll()<CR>
 nnoremap <silent> <leader>Gc :call <SID>GitCommitPrompt()<CR>
 nnoremap <silent> <leader>Gp :call <SID>GitShell('push')<CR>
 nnoremap <silent> <leader>GP :call <SID>GitShell('pull --ff-only')<CR>
@@ -1724,6 +1868,38 @@ vnoremap > >gv
 set nolist
 set listchars=tab:»·,trail:·,nbsp:␣
 nnoremap <leader>l :set list!<CR>
+
+" ----------------------------------------------------------
+" Manual cleanup
+" ----------------------------------------------------------
+function! s:TrimTrailingWhitespace() abort
+    if &modifiable == 0 || &readonly
+        echohl WarningMsg
+        echom 'Trailing whitespace not trimmed: buffer is not editable.'
+        echohl None
+        return
+    endif
+    let l:view = winsaveview()
+    let l:changedtick = b:changedtick
+    try
+        keepjumps keeppatterns %s/\s\+$//e
+    catch
+        call winrestview(l:view)
+        echohl ErrorMsg
+        echom 'Trailing whitespace trim failed: ' . v:exception
+        echohl None
+        return
+    endtry
+    call winrestview(l:view)
+    if b:changedtick == l:changedtick
+        echom 'No trailing whitespace found.'
+    else
+        echom 'Trailing whitespace trimmed.'
+    endif
+endfunction
+
+command! CorporateSafeTrimWhitespace call <SID>TrimTrailingWhitespace()
+nnoremap <leader>tw :call <SID>TrimTrailingWhitespace()<CR>
 
 " ----------------------------------------------------------
 " Yank highlight and wrap

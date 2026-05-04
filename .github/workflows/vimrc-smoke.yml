@@ -41,6 +41,35 @@ jobs:
           qa!
           VIM
 
+          cat > build-temp/check-editing-helpers.vim <<'VIM'
+          set nomore
+          if &modeline || &modelines != 0 || &exrc
+            cquit
+          endif
+          if &clipboard =~# 'unnamed'
+            cquit
+          endif
+          if maparg(' Q', 'n') !=# ''
+            cquit
+          endif
+          call setline(1, ['alpha   ', "beta\t", 'gamma'])
+          let @/ = 'preserve-this-search'
+          CorporateSafeTrimWhitespace
+          if getline(1) !=# 'alpha' || getline(2) !=# 'beta' || getline(3) !=# 'gamma'
+            cquit
+          endif
+          if @/ !=# 'preserve-this-search'
+            cquit
+          endif
+          call writefile([repeat('x', 2098000)], 'build-temp/large-file.txt')
+          edit build-temp/large-file.txt
+          if !exists('b:corporate_safe_large_file')
+            cquit
+          endif
+          autocmd! Session
+          qa!
+          VIM
+
           cat > build-temp/check-netrw-toggle.vim <<'VIM'
           set nomore
           edit README.md
@@ -87,6 +116,18 @@ jobs:
           if search('External tools required: no', 'n') == 0
             cquit
           endif
+          if search('Automatic clipboard: no', 'n') == 0
+            cquit
+          endif
+          if search('Modelines enabled: no', 'n') == 0
+            cquit
+          endif
+          if search('Local vimrc enabled: no', 'n') == 0
+            cquit
+          endif
+          if search('Large file limit bytes: 2097152', 'n') == 0
+            cquit
+          endif
           if search('Auto sessions requested: yes', 'n') == 0
             cquit
           endif
@@ -100,6 +141,15 @@ jobs:
             cquit
           endif
           if search('<Space>cd', 'n') == 0
+            cquit
+          endif
+          if search('<Space>tw', 'n') == 0
+            cquit
+          endif
+          if search('<Space>cw', 'n') == 0
+            cquit
+          endif
+          if search('<Space>Q', 'n') != 0
             cquit
           endif
           bwipeout!
@@ -274,6 +324,12 @@ jobs:
           HOME="$PWD/build-temp/vim-relative-number-test" \
             vim -Nu "$PWD/.vimrc" -n -es -i NONE \
               -S build-temp/check-relative-number.vim
+
+      - name: Check editing helpers
+        run: |
+          HOME="$PWD/build-temp/vim-editing-helpers-test" \
+            vim -Nu "$PWD/.vimrc" -n -es -i NONE \
+              -S build-temp/check-editing-helpers.vim
 
       - name: Check netrw sidebar toggle
         run: |

@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here.
 
+## [1.4.0] - 2026-05-05
+
+### Added
+
+- Added explicit file-trust defaults that disable project-controlled modelines and local vimrc/exrc loading.
+- Added manual trailing-whitespace cleanup with `Space tw` / `:CorporateSafeTrimWhitespace`.
+- Added quickfix auto-open and quickfix history mappings with `Space cw`, `Space cn`, and `Space cp`.
+- Added large-file mode with configurable `g:corporate_safe_large_file_bytes`.
+- Added staged Git diff and unstage actions with `Space GD`, `Space Gu`, `Space GU`, and focused `:CorporateSafeGit...` commands.
+- Expanded stock filetype indentation defaults for TypeScript, JSX/TSX, HTML/XML, CSS preprocessors, Vue/Svelte, and Go.
+
+### Changed
+
+- System clipboard integration is no longer enabled globally by default; explicit `Space y` / `Space p` mappings remain available when Vim has clipboard support, with opt-in automatic clipboard through `g:corporate_safe_auto_clipboard`.
+- `Space GA` now confirms before staging all Git changes.
+
+### Removed
+
+- Removed the `Space Q` force-quit mapping; use Vim's built-in `:q!` when discarding changes is intentional.
+
 ## [1.3.0] - 2026-05-04
 
 ### Added
