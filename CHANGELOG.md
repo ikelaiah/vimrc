@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Added `Space qq` to toggle the quickfix window without changing the current result list.
+- Added `Space bb` as a lightweight buffer jump helper using Vim's built-in `:ls` and `:b`.
+- Added README quickfix workflow guidance so project search, legacy navigation, TODO scans, hotspot scans, and Git changed files share one navigation model.
+
+### Changed
+
+- Clarified quickfix titles for project search, legacy outlines, TODO markers, and Git changed files.
+- Updated in-editor help and health mapping output for the new quickfix and buffer shortcuts.
+
 ## [1.4.0] - 2026-05-05
 
 ### Added

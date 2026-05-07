@@ -318,6 +318,7 @@ function! s:ShowHelp() abort
         \ '  <Space>g     search project and open quickfix',
         \ '  <Space>w     save current file',
         \ '  ]q / [q      next / previous quickfix result',
+        \ '  <Space>qq    toggle quickfix results',
         \ '',
         \ 'Project Feel',
         \ '  Auto sessions are on by default for folder opens like: vim .',
@@ -338,6 +339,7 @@ function! s:ShowHelp() abort
         \ '  ]q / [q      next / previous quickfix result',
         \ '  <Space>co    open quickfix',
         \ '  <Space>cc    close quickfix',
+        \ '  <Space>qq    toggle quickfix',
         \ '  <Space>cw    open quickfix only when it has entries',
         \ '  <Space>cn/cp newer / older quickfix list',
         \ '',
@@ -371,6 +373,7 @@ function! s:ShowHelp() abort
         \ '  <Space>Gg    run a git command',
         \ '',
         \ 'Buffers and Windows',
+        \ '  <Space>bb    list buffers, then jump with :b',
         \ '  <Space>bn/bp next / previous buffer',
         \ '  <Space>bd    close buffer',
         \ '  Ctrl-h/j/k/l move between splits',
@@ -467,6 +470,7 @@ function! s:MappingLines() abort
         \ '    ]q / [q         next / previous quickfix result',
         \ '    <Space>co       open quickfix',
         \ '    <Space>cc       close quickfix',
+        \ '    <Space>qq       toggle quickfix',
         \ '    <Space>cw       open quickfix only when it has entries',
         \ '    <Space>cn/cp    newer / older quickfix list',
         \ '',
@@ -500,6 +504,7 @@ function! s:MappingLines() abort
         \ '    <Space>Gg       run a git command',
         \ '',
         \ '  Buffers and Windows',
+        \ '    <Space>bb       list buffers, then jump with :b',
         \ '    <Space>bn/bp    next / previous buffer',
         \ '    <Space>bd       close buffer',
         \ '    Ctrl-h/j/k/l    move between splits',
@@ -624,6 +629,7 @@ nnoremap <leader>x :xit<CR>
 " ----------------------------------------------------------
 " Buffers
 " ----------------------------------------------------------
+nnoremap <leader>bb :ls<CR>:b<Space>
 nnoremap <leader>bn :bnext<CR>
 nnoremap <leader>bp :bprev<CR>
 nnoremap <leader>bd :bdelete<CR>
@@ -743,7 +749,7 @@ function! s:ProjectGrep(pattern, glob) abort
     call s:SetQuickfixList(getqflist(), 'Project search: ' . l:pattern . ' in ' . l:glob)
     copen
     wincmd p
-    echom 'Project matches: ' . len(getqflist()) . ' in ' . l:glob
+    echom 'Project search matches: ' . len(getqflist()) . ' in ' . l:glob
 endfunction
 
 function! s:PromptProjectGrep() abort
@@ -815,6 +821,27 @@ function! s:QuickfixWindow() abort
     cwindow
 endfunction
 
+function! s:QuickfixOpen() abort
+    for l:winnr in range(1, winnr('$'))
+        if getbufvar(winbufnr(l:winnr), '&buftype') ==# 'quickfix'
+            return 1
+        endif
+    endfor
+    return 0
+endfunction
+
+function! s:QuickfixToggle() abort
+    if s:QuickfixOpen()
+        cclose
+        return
+    endif
+    if empty(getqflist())
+        echo 'Quickfix list is empty'
+        return
+    endif
+    copen
+endfunction
+
 function! s:QuickfixHistory(direction) abort
     try
         if a:direction > 0
@@ -835,6 +862,7 @@ nnoremap [q :call <SID>QuickfixStep(-1)<CR>
 
 nnoremap <leader>co :copen<CR>
 nnoremap <leader>cc :cclose<CR>
+nnoremap <leader>qq :call <SID>QuickfixToggle()<CR>
 nnoremap <leader>cw :call <SID>QuickfixWindow()<CR>
 nnoremap <leader>cn :call <SID>QuickfixHistory(1)<CR>
 nnoremap <leader>cp :call <SID>QuickfixHistory(-1)<CR>
@@ -1303,7 +1331,7 @@ function! s:LegacyOutline() abort
             endif
         endfor
     endfor
-    call s:ShowQuickfixItems(l:items, 'Current file outline', 'No likely functions or classes found in current file.')
+    call s:ShowQuickfixItems(l:items, 'Legacy outline', 'No likely functions or classes found in current file.')
 endfunction
 
 function! s:LegacyDefinitions(arg) abort
@@ -1426,7 +1454,7 @@ function! s:LegacyTodos(arg) abort
         return
     endif
     let l:items = s:CollectLegacyPatternItems(s:LegacyTodoSpecs(), l:glob, 'T')
-    call s:ShowQuickfixItems(l:items, 'Legacy TODO markers', 'No TODO/FIXME/HACK/BUG markers found in: ' . l:glob)
+    call s:ShowQuickfixItems(l:items, 'TODO markers', 'No TODO/FIXME/HACK/BUG markers found in: ' . l:glob)
 endfunction
 
 function! s:LegacyTodosPrompt() abort

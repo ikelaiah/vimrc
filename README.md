@@ -52,7 +52,7 @@ Leader key: `Space`
 | Search the project and open quickfix | `Space g` |
 | Save the current file | `Space w` |
 
-After a search, use `]q` and `[q` to move through results. Most project search, legacy navigation, TODO scan, hotspot scan, and Git changed-file workflows use the same quickfix navigation.
+After a search, use `]q` and `[q` to move through results. Use `Space qq` to show or hide the result list. Most project search, legacy navigation, TODO scan, hotspot scan, and Git changed-file workflows use the same quickfix navigation.
 
 ---
 
@@ -154,7 +154,7 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] Prompted project search using `vimgrep` with file-glob scoping
 - [x] Configurable deep file search and default project-search glob
 - [x] Search word under cursor across the project
-- [x] Quickfix next/previous, open/close, auto-open, and history navigation helpers
+- [x] Quickfix next/previous, open/close, toggle, auto-open, and history navigation helpers
 - [x] Current-file function/class outline for legacy code
 - [x] Symbol definition, reference, caller, outgoing-call, and flow quickfix views using stock Vim search
 - [x] Legacy inspection report for definitions, references, current context, and likely callees
@@ -165,6 +165,7 @@ It does **not** claim formal security certification, company policy approval, or
 - [x] In-editor shortcut cheatsheet
 - [x] In-editor health report for locked-down workstation debugging
 - [x] Recent-file picker
+- [x] Simple buffer jump helper
 - [x] Toggleable whitespace visibility (tabs, trailing spaces, nbsp)
 - [x] Toggleable relative line numbers, off by default
 - [x] File-local working directory shortcut
@@ -334,6 +335,25 @@ Space ?
 
 ---
 
+### Quickfix Workflow
+
+Quickfix is the shared result list for this configuration. Learn it once and it applies to project search, word search, legacy outlines, symbol flow, TODO markers, hotspot scans, and Git changed files.
+
+| Action | Shortcut |
+| ------ | -------- |
+| Next result | `]q` |
+| Previous result | `[q` |
+| Toggle results | `Space qq` |
+| Open results | `Space co` |
+| Close results | `Space cc` |
+| Open results only when non-empty | `Space cw` |
+| Newer result list | `Space cn` |
+| Older result list | `Space cp` |
+
+Quickfix titles identify the current workflow, such as `Project search: ...`, `Git changed files`, `Legacy outline`, or `TODO markers`.
+
+---
+
 ### Files
 
 | Action           | Shortcut      |
@@ -354,6 +374,7 @@ Space ?
 | Search word under cursor | `Space fw` |
 | Next result              | `]q`       |
 | Previous result          | `[q`       |
+| Toggle results           | `Space qq` |
 | Open results             | `Space co` |
 | Close results            | `Space cc` |
 | Open results if non-empty | `Space cw` |
@@ -472,11 +493,12 @@ The `Space Gp` and `Space GP` mappings use Vim's normal shell command path so cr
 
 | Action          | Shortcut   |
 | --------------- | ---------- |
+| List and jump to buffer | `Space bb` |
 | Next buffer     | `Space bn` |
 | Previous buffer | `Space bp` |
 | Close buffer    | `Space bd` |
 
-Use Vim's built-in `:ls` and `:b {number-or-name}` for direct buffer selection.
+`Space bb` runs `:ls` and leaves `:b` ready for a buffer number or name.
 
 ---
 
