@@ -30,9 +30,81 @@ Current release: **1.4.0**. See [CHANGELOG.md](CHANGELOG.md).
 
 1. Install stock Vim or use the Vim already available on your workstation.
 2. Put this repository's `.vimrc` at the normal Vim config path for your OS.
-3. Open Vim and run `:CorporateSafeHealth` to confirm the runtime directories, mappings, and policy-related settings.
+3. Open a project with `vim .`.
+4. Press `Space ?` for the in-editor cheatsheet.
+5. Run `:CorporateSafeHealth` to confirm runtime directories, mappings, and policy-related settings.
 
 For quick install commands, see [Quick Install](#quick-install).
+
+This configuration intentionally restores your per-project session by default when you open a folder, so returning to a project feels closer to a modern editor than a blank Vim startup. Session files are stored in the centralized runtime directory documented in [Policy Footprint and Recovery](#policy-footprint-and-recovery).
+
+---
+
+## First Five Shortcuts
+
+Leader key: `Space`
+
+| Action | Shortcut |
+| ------ | -------- |
+| Open the cheatsheet | `Space ?` |
+| Toggle the project sidebar | `Space e` |
+| Find a file from Vim's project path | `Space ff` |
+| Search the project and open quickfix | `Space g` |
+| Save the current file | `Space w` |
+
+After a search, use `]q` and `[q` to move through results. Most project search, legacy navigation, TODO scan, hotspot scan, and Git changed-file workflows use the same quickfix navigation.
+
+---
+
+## Recommended Profiles
+
+Use the default profile first. Add one of these snippets near the top of your installed `.vimrc` only when your environment needs it.
+
+### Default / Modern-Editor Feel
+
+No changes needed.
+
+- auto session restore/save is enabled
+- deep `:find` support is enabled
+- backup, swap, undo, and session files are centralized under Vim's runtime directory
+- clipboard is explicit through `Space y` and `Space p`
+
+### Large Repository
+
+Use this when `Space ff`, `:find`, or broad searches feel too slow in a large tree:
+
+```vim
+let g:corporate_safe_deep_find = 0
+let g:corporate_safe_search_glob = 'src/**/*'
+let g:corporate_safe_legacy_glob = 'src/**/*'
+```
+
+Keep the globs narrow at first, then broaden them when the result set is manageable.
+
+### Sensitive Folder / Minimal Local State
+
+Use this when project content should not be copied into Vim-managed backup, swap, undo, session, or viminfo/shada files:
+
+```vim
+let g:corporate_safe_no_local_state = 1
+```
+
+This also disables auto sessions for that Vim configuration.
+
+### Explicit Clipboard Sharing
+
+The default mappings keep system clipboard access intentional:
+
+```text
+Space y
+Space p
+```
+
+If you want normal yanks and puts to use the system clipboard automatically, opt in:
+
+```vim
+let g:corporate_safe_auto_clipboard = 1
+```
 
 ---
 
